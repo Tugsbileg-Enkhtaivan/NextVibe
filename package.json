@@ -1,8 +1,10 @@
 {
     "private": true,
     "workspaces": [
-      "apps/*",
-      "packages/*"
-    ]
-  }
-  
+        "apps/*",
+        "packages/*"
+    ],
+    "devDependencies": {
+        "@types/express": "^5.0.1"
+    }
+}

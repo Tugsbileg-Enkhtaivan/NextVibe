@@ -1,0 +1,1 @@
+tailwind bas bus config

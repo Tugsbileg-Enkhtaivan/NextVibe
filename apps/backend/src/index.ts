@@ -1,17 +1,27 @@
-import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import dotenv from "dotenv";
+import express from "express";
+import { PrismaClient } from "@prisma/client";
+import cors from "cors";
+import aiSongRouter from "./routes/aiSongRouter";
+import spotifyRouter from "./routes/spotifyRouter";
+
+dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
 
+app.use(cors());
 app.use(express.json());
 
-app.get('/', async(_req, res) => {
-    const users = await prisma.user.findMany()
-    res.json(users)
-})
+app.use("/api/ai-song-search", aiSongRouter);
+app.use("/api/spotify", spotifyRouter);
 
-app.post('/users', async (req, res) => {
+app.get("/", async (_req, res) => {
+  const users = await prisma.user.findMany();
+  res.json(users);
+});
+
+app.post("/users", async (req, res) => {
   const { name, email } = req.body;
 
   try {
@@ -21,7 +31,7 @@ app.post('/users', async (req, res) => {
     res.json(user);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Failed to create user' });
+    res.status(500).json({ error: "Failed to create user" });
   }
 });
 

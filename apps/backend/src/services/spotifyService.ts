@@ -7,15 +7,25 @@ const spotifyApi = new SpotifyWebApi({
 });
 
 export const authenticateSpotify = async () => {
-  const tokenData = await spotifyApi.clientCredentialsGrant();
-  spotifyApi.setAccessToken(tokenData.body.access_token);
+  try {
+    const tokenData = await spotifyApi.clientCredentialsGrant();
+    spotifyApi.setAccessToken(tokenData.body.access_token);
+  } catch (error) {
+    console.error("[SPOTIFY AUTH ERROR]", error);
+    throw new Error("Failed to authenticate with Spotify");
+  }
 };
 
-export const searchTracks = async (query: string) =>
-  retry(() => spotifyApi.searchTracks(query));
+export const searchTracks = async (
+  query: string
+): Promise<SpotifyApi.SearchResponse> =>
+  retry(() => spotifyApi.searchTracks(query).then((res) => res.body));
 
-export const searchAlbums = async (query: string) =>
-  retry(() => spotifyApi.searchAlbums(query));
+export const searchAlbums = async (
+  query: string
+): Promise<SpotifyApi.SearchResponse> =>
+  retry(() => spotifyApi.searchAlbums(query).then(res => res.body));
+
 
 export const addToSavedTracks = async (songId: string, accessToken: string) => {
   spotifyApi.setAccessToken(accessToken);

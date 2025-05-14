@@ -57,7 +57,7 @@ export const getAISongSuggestions = async (req: Request, res: Response) => {
         const [songName, artistName] = line.split(" - ").map((s) => s.trim());
         if (!songName || !artistName) return null;
         const result = await searchTracks(`${songName} ${artistName}`);
-        const track = result?.body.tracks?.items?.[0];
+        const track = result.tracks?.items?.[0]; 
         if (!track) return null;
         return {
           songName: track.name,
@@ -75,7 +75,7 @@ export const getAISongSuggestions = async (req: Request, res: Response) => {
         const [albumName, artistName] = line.split(" - ").map((s) => s.trim());
         if (!albumName || !artistName) return null;
         const result = await searchAlbums(`${albumName} ${artistName}`);
-        const album = result?.body.albums?.items?.[0];
+        const album = result.albums?.items?.[0];
         if (!album) return null;
         return {
           albumName: album.name,

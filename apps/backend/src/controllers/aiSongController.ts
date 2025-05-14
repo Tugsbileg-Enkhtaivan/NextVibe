@@ -5,6 +5,7 @@ import {
   searchAlbums,
   searchTracks,
 } from "../services/spotifyService";
+import { isAlbumSearchResponse, isTrackSearchResponse } from "../utils/spotifyUtils";
 
 export const getAISongSuggestions = async (req: Request, res: Response) => {
   const { mood, genre } = req.query as { mood: string; genre: string };
@@ -57,7 +58,13 @@ export const getAISongSuggestions = async (req: Request, res: Response) => {
         const [songName, artistName] = line.split(" - ").map((s) => s.trim());
         if (!songName || !artistName) return null;
         const result = await searchTracks(`${songName} ${artistName}`);
-        const track = result?.body.tracks?.items?.[0];
+
+        if (!isTrackSearchResponse(result)) {
+          throw new Error("Invalid track search response from Spotify");
+      }
+
+        const track = result.tracks.items[0];
+ 
         if (!track) return null;
         return {
           songName: track.name,
@@ -75,7 +82,11 @@ export const getAISongSuggestions = async (req: Request, res: Response) => {
         const [albumName, artistName] = line.split(" - ").map((s) => s.trim());
         if (!albumName || !artistName) return null;
         const result = await searchAlbums(`${albumName} ${artistName}`);
-        const album = result?.body.albums?.items?.[0];
+
+        if(!isAlbumSearchResponse(result)) {
+          throw new Error("Invalid album search response from Spotify")
+        }
+        const album = result.albums?.items?.[0];
         if (!album) return null;
         return {
           albumName: album.name,

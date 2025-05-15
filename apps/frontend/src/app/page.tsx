@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import SelectableGroup from '../../_components/SelectableGroup';
-import api from '../../lib/axios';
+import api from './lib/axios';
 
 const moods = ['Happy', 'Sad', 'Calm', 'Angry'];
 const genres = ['Lo-fi', 'Rock', 'Jazz', 'Ambient', 'Hip Hop', 'EMD', 'R&B'];
@@ -20,6 +20,7 @@ export default function HomePage() {
     try {
       setLoading(true);
 
+      // Use GET if your backend is expecting query params
       const res = await api.get('/api/ai-song-search', {
         params: {
           mood,

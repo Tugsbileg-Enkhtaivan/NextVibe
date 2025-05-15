@@ -1,105 +1,105 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
+import SelectableGroup from '../../_components/SelectableGroup';
+import api from '../../lib/axios';
 
-export default function Home() {
-  const [selectedMood, setSelectedMood] = useState<string[]>([]);
-  const [selectedGenre, setSelectedGenre] = useState("");
+const moods = ['Happy', 'Sad', 'Calm', 'Angry'];
+const genres = ['Lo-fi', 'Rock', 'Jazz', 'Ambient', 'Hip Hop', 'EMD', 'R&B'];
 
-  const moods = [
-    { id: "happy", label: "Happy" },
-    { id: "sad", label: "Sad" },
-    { id: "angry", label: "Angry" },
-    { id: "hungry", label: "Hungry" },
-    { id: "excited", label: "Excited" },
-    { id: "tired", label: "Tired" },
-    { id: "scared", label: "Scared" },
-    { id: "confused", label: "Confused" },
-    { id: "nervous", label: "Nervous" },
-    { id: "lonely", label: "Lonely" },
-  ];
+export default function HomePage() {
+  const [mood, setMood] = useState<string | null>(null);
+  const [genre, setGenre] = useState<string | null>(null);
+  const [songs, setSongs] = useState<any[]>([]);
+  const [albums, setAlbums] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const genres = [
-    "Pop", "Rock", "Hip-hop", "Rap", "R&B", "Jazz", "Blues", "Classical", "EDM", "House",
-    "Techno", "Reggae", "Country", "Metal", "Punk", "Folk", "Soul", "Funk", "K-pop", "Latin"
-  ];
+  const handleSubmit = async () => {
+    if (!mood) return alert('Please select a mood');
 
-  const toggleSelectMoods = (moodId: string) => {
-    if (selectedMood.includes(moodId)) {
-      setSelectedMood(selectedMood.filter(id => id !== moodId));
-    } else {
-      setSelectedMood([...selectedMood, moodId]);
+    try {
+      setLoading(true);
+
+      // Use GET if your backend is expecting query params
+      const res = await api.get('/api/ai-song-search', {
+        params: {
+          mood,
+          genre,
+        },
+      });
+
+      setSongs(res.data.songs || []);
+      setAlbums(res.data.albums || []);
+
+    } catch (err) {
+      console.error('Fetch error:', err);
+      alert('Failed to fetch suggestions');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleGenreClick = (genreText: string) => {
-    setSelectedGenre(genreText === selectedGenre ? "" : genreText);
-  };
+  // const handleFavoriteSong = async (song) => {
+  //   try {
+  //     await api.post("/api/favorites/song", {
+  //       ...song,
+  //       userId: user.id, // Clerk userId
+  //     });
+  //     alert("Saved to favorites!");
+  //   } catch (err) {
+  //     console.error(err);
+  //     alert("Failed to save song");
+  //   }
+  // };
+  
 
   return (
-    <section className="w-full min-h-screen py-10">
-      <div className="w-2/3 mx-auto">
-        <h1 className="text-2xl font-bold mb-4 text-center">Та mood-ээ сонгоно уу...</h1>
-        <p className="mb-4">Сонгосон mood-н тоо: {selectedMood.length}</p>
+    <main className="p-8 max-w-xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Select your mood</h1>
+      <SelectableGroup options={moods} selected={mood} onSelect={setMood} />
 
-        <div className="grid grid-cols-5 gap-2">
-          {moods.map((mood) => {
-            const isSelected = selectedMood.includes(mood.id);
-            return (
-              <button
-                key={mood.id}
-                onClick={() => toggleSelectMoods(mood.id)}
-                className={`
-                  py-2 px-4 rounded font-medium transition-colors duration-200
-                  ${isSelected
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}
-                `}
-              >
-                {mood.label}
-              </button>
-            );
-          })}
-        </div>
+      <h2 className="text-xl font-semibold mt-6">Pick a genre (optional)</h2>
+      <SelectableGroup options={genres} selected={genre} onSelect={setGenre} />
 
-        {selectedMood.length > 0 && (
-          <div className="mt-6">
-            <h2 className="text-lg font-semibold mb-2">Сонгосон mood:</h2>
-            <div className="flex flex-wrap gap-2">
-              {selectedMood
-                .slice()
-                .sort()
-                .map((id) => {
-                  const mood = moods.find((m) => m.id === id);
-                  return (
-                    <span key={id} className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                      {mood?.label || id}
-                    </span>
-                  );
-                })}
+      <button
+        onClick={handleSubmit}
+        className="mt-8 bg-blue-600 text-white px-6 py-2 rounded-full"
+        disabled={loading}
+      >
+        {loading ? 'Finding...' : 'Find My Vibe'}
+      </button>
+
+      {(songs.length > 0 || albums.length > 0) && (
+        <div className="mt-10 space-y-6">
+          {songs.length > 0 && (
+            <div>
+              <h2 className="text-xl font-bold mb-2">Songs</h2>
+              {songs.map((song, i) => (
+                <div key={i} className="p-2 border rounded my-1 flex gap-2 items-center">
+                  <img src={song.albumCover} alt={song.songName} width={60} />
+                  <div>
+                    <p>{song.songName} - {song.artistName}</p>
+                    <p className="text-sm text-gray-500">{song.albumName}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        )}
-      </div>
+          )}
 
-      <div className="w-2/3 mx-auto mt-10">
-        <h6 className="text-center font-semibold text-2xl">Та genre-aa сонгоно уу...</h6>
-
-        <div className="grid grid-cols-5 gap-2 mt-5 [&>*]:py-2 [&>*]:px-4 [&>*]:cursor-pointer [&>*]:rounded [&>*]:font-medium [&>*]:transition-colors [&>*]:duration-200">
-          {genres.map((genre) => (
-            <div
-              key={genre}
-              onClick={() => handleGenreClick(genre.toLowerCase())}
-              className={`${selectedGenre === genre.toLowerCase()
-                ? "bg-blue-500 text-white"
-                : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-                }`}
-            >
-              {genre}
+          {albums.length > 0 && (
+            <div>
+              <h2 className="text-xl font-bold mb-2">Albums</h2>
+              {albums.map((album, i) => (
+                <div key={i} className="p-2 border rounded my-1 flex gap-2 items-center">
+                  <img src={album.albumCover} alt={album.albumName} width={60} />
+                  <p>{album.albumName} - {album.artistName}</p>
+                  {/* <button onClick={() => handleFavoriteSong(song)}>❤️ Save</button> */}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-      </div>
-    </section>
+      )}
+    </main>
   );
 }

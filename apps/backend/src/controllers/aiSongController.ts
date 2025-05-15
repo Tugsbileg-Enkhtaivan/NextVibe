@@ -13,26 +13,36 @@ export const getAISongSuggestions = async (req: Request, res: Response) => {
   try {
     await authenticateSpotify();
 
+    const variation = Math.random() > 0.5 ? "Include some lesser-known or international picks." : "Try to mix decades and avoid repeat suggestions.";
+
     const prompt = `
-      Suggest 5 unique songs and 5 unique albums based on:
-      Mood: ${mood}
-      Genre: ${genre}
+You are a music recommendation engine.
 
-      Format:
-      SONGS:
-      1. Song Name - Artist
-      2. Song Name - Artist
-      3. Song Name - Artist
-      4. Song Name - Artist
-      5. Song Name - Artist
+Suggest 5 unique SONGS and 5 unique  ALBUMS based on the following:
 
-      ALBUMS:
-      1. Album Name - Artist
-      2. Album Name - Artist
-      3. Album Name - Artist
-      4. Album Name - Artist
-      5. Album Name - Artist
-    `;
+Mood: ${mood}
+Genre: ${genre}
+
+${variation}
+
+Only output in the following format — no extra comments or explanations:
+
+SONGS:
+1. Song Name - Artist
+2. Song Name - Artist
+3. Song Name - Artist
+4. Song Name - Artist
+5. Song Name - Artist
+
+ALBUMS:
+1. Album Name - Artist
+2. Album Name - Artist
+3. Album Name - Artist
+4. Album Name - Artist
+5. Album Name - Artist
+
+Do NOT include song lists inside the ALBUM section. Keep output minimal and in correct format.
+`;
 
     const gptText = await getGPTRecommendations(prompt);
     const songsSection = gptText.match(/SONGS:([\s\S]*?)ALBUMS:/i);
@@ -47,25 +57,34 @@ export const getAISongSuggestions = async (req: Request, res: Response) => {
       text
         .trim()
         .split("\n")
-        .map((line) => line.replace(/^\d+[\).\s-]*/, "").trim())
-        .filter(Boolean);
+        .map((line) => line.match(/^\d+\.\s*(.+?)\s*-\s*(.+)$/))
+        .filter(Boolean)
+        .map(([, name, artist]) => ({
+          name: name.trim(),
+          artist: artist.trim(),
+        }));
 
     const songs = parseList(songsSection[1]);
     const albums = parseList(albumsSection[1]);
 
     const verifiedSongs = await Promise.all(
-      songs.map(async (line) => {
-        const [songName, artistName] = line.split(" - ").map((s) => s.trim());
-        if (!songName || !artistName) return null;
+      songs.map(async ({ name: songName, artist: artistName }) => {
         const result = await searchTracks(`${songName} ${artistName}`);
-
-        if (!isTrackSearchResponse(result)) {
-          throw new Error("Invalid track search response from Spotify");
-      }
-
-        const track = result.tracks.items[0];
- 
-        if (!track) return null;
+        if (!isTrackSearchResponse(result)) return null;
+    
+        const track = result.tracks.items.find(
+          (t) =>
+            t.artists.some((a) =>
+              a.name.toLowerCase().includes(artistName.toLowerCase())
+            ) &&
+            t.name.toLowerCase().includes(songName.toLowerCase())
+        );
+    
+        if (!track) {
+          console.warn(`Song not found: ${songName} by ${artistName}`);
+          return null;
+        }
+    
         return {
           songName: track.name,
           artistName: track.artists[0].name,
@@ -76,18 +95,26 @@ export const getAISongSuggestions = async (req: Request, res: Response) => {
         };
       })
     );
+    
 
     const verifiedAlbums = await Promise.all(
-      albums.map(async (line) => {
-        const [albumName, artistName] = line.split(" - ").map((s) => s.trim());
-        if (!albumName || !artistName) return null;
+      albums.map(async ({ name: albumName, artist: artistName }) => {
         const result = await searchAlbums(`${albumName} ${artistName}`);
-
-        if(!isAlbumSearchResponse(result)) {
-          throw new Error("Invalid album search response from Spotify")
+        if (!isAlbumSearchResponse(result)) return null;
+    
+        const album = result.albums.items.find(
+          (a) =>
+            a.artists.some((artist) =>
+              artist.name.toLowerCase().includes(artistName.toLowerCase())
+            ) &&
+            a.name.toLowerCase().includes(albumName.toLowerCase())
+        );
+    
+        if (!album) {
+          console.warn(`Album not found: ${albumName} by ${artistName}`);
+          return null;
         }
-        const album = result.albums?.items?.[0];
-        if (!album) return null;
+    
         return {
           albumName: album.name,
           artistName: album.artists[0].name,
@@ -96,6 +123,39 @@ export const getAISongSuggestions = async (req: Request, res: Response) => {
         };
       })
     );
+    
+
+    // await prisma.aILog.create({
+    //   data: {
+    //     userId,
+    //     mood,
+    //     genre,
+    //     content: {
+    //       songs: verifiedSongs,
+    //       albums: verifiedAlbums,
+    //     },
+    //   },
+    // });
+    
+
+// const existingLog = await prisma.aILog.findFirst({
+//   where: {
+//     userId,
+//     mood,
+//     genre,
+//     createdAt: {
+//       gte: subDays(new Date(), 3),
+//     },
+//   },
+//   orderBy: {
+//     createdAt: 'desc',
+//   },
+// });
+
+// if (existingLog) {
+//   return res.json(existingLog.content);
+// }
+
 
     res.json({
       songs: verifiedSongs.filter(Boolean),

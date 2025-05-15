@@ -124,39 +124,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       })
     );
     
-
-    // await prisma.aILog.create({
-    //   data: {
-    //     userId,
-    //     mood,
-    //     genre,
-    //     content: {
-    //       songs: verifiedSongs,
-    //       albums: verifiedAlbums,
-    //     },
-    //   },
-    // });
-    
-
-// const existingLog = await prisma.aILog.findFirst({
-//   where: {
-//     userId,
-//     mood,
-//     genre,
-//     createdAt: {
-//       gte: subDays(new Date(), 3),
-//     },
-//   },
-//   orderBy: {
-//     createdAt: 'desc',
-//   },
-// });
-
-// if (existingLog) {
-//   return res.json(existingLog.content);
-// }
-
-
     res.json({
       songs: verifiedSongs.filter(Boolean),
       albums: verifiedAlbums.filter(Boolean),

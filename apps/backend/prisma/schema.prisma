@@ -14,7 +14,48 @@ datasource db {
 }
 
 model User {
-  id    Int     @id @default(autoincrement())
-  name  String
-  email String  @unique
+  id        String    @id @default(nanoid())
+  email     String    @unique
+  username  String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  history   History[]
+  mood      Mood[]
+  profile   Profile? 
 }
+
+enum Platform {
+  YOUTUBE
+  SPOTIFY
+}
+
+model History {
+  id         String   @id @default(nanoid())
+  title      String
+  artist     String
+  platform   Platform
+  type       String[]
+  createdAt  DateTime @default(now())
+  isFavorite Boolean  @default(false)
+  User       User?    @relation(fields: [userId], references: [id])
+  userId     String?
+}
+
+model Mood {
+  id        String   @id @default(nanoid())
+  mood      String
+  genre     String
+  createdAt DateTime @default(now())
+  User      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+}
+
+model Profile {
+  id        String  @id @default(nanoid())
+  mbti      String
+  astrology String
+  userId    String? @unique
+  User      User?   @relation(fields: [userId], references: [id])
+}
+
+ 

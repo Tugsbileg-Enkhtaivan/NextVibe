@@ -22,13 +22,12 @@ app.get("/", async (_req, res) => {
 });
 
 app.post("/users", async (req, res) => {
-  const { name, email } = req.body;
-
+  const { username, email } = req.body;
   try {
     const user = await prisma.user.create({
-      data: { name, email },
+      data: { username, email },
     });
-    res.json(user);
+    res.json({message: "User created successfully", user});
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Failed to create user" });

@@ -50,6 +50,7 @@ const Test = () => {
 
   return (
     <div className="w-1/2 space-y-6 px-30 py-20">
+    <h1>Butelgui huuhdiin odriin temdeglel</h1>
       <div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">

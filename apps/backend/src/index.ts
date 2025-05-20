@@ -38,12 +38,12 @@ const isAuthenticated = async (req: Request, res: Response, next: NextFunction) 
   }
 }
 
-app.get("/", isAuthenticated, async (_req, res) => {
+app.get("/", isAuthenticated, async (_req: Request, res: Response) => {
   const users = await prisma.user.findMany();
   res.json(users);
 });
 
-app.post("/users", async (req, res) => {
+app.post("/users", async (req: Request, res: Response) => {
   const { username, email } = req.body;
   try {
     const user = await prisma.user.create({

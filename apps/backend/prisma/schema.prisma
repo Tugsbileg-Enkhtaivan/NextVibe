@@ -21,7 +21,7 @@ model User {
   updatedAt DateTime  @updatedAt
   history   History[]
   mood      Mood[]
-  profile   Profile? 
+  profile   Profile?
 }
 
 enum Platform {
@@ -58,4 +58,29 @@ model Profile {
   User      User?   @relation(fields: [userId], references: [id])
 }
 
- 
+model SpotifyAccount {
+  id           String @id @default(cuid())
+  userId       String @unique
+  accessToken  String
+  refreshToken String
+  expiresAt    BigInt
+}
+
+model UserRecommendation {
+  id        String   @id @default(cuid())
+  userId    String
+  mood      String
+  genre     String
+  timestamp DateTime
+  songs     Json
+  albums    Json
+}
+
+model UserFavorite {
+  id          String   @id @default(cuid())
+  userId      String
+  itemId      String
+  itemType    String // 'song' | 'album'
+  itemDetails Json
+  addedAt     DateTime @default(now())
+}

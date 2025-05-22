@@ -130,3 +130,35 @@ export default function SlotMachine() {
         </div>
     );
 }
+
+
+//         onClick={spin}
+//                         disabled={spinning}
+//                         className={`
+//               bg-gradient-to-b from-red-500 to-red-700 
+//               hover:from-red-400 hover:to-red-600
+//               text-white font-bold py-3 px-8 rounded-full 
+//               shadow-lg transform transition-transform 
+//               ${spinning ? 'opacity-70 cursor-not-allowed' : 'hover:scale-105'}
+//             `}
+//                     >
+//                         {spinning ? 'SPINNING...' : 'SPIN!'}
+//                     </button>
+//                 </div>
+//             </div>
+
+//             {/* Result message */}
+//             {result && (
+//                 <div className="mt-4 p-4 bg-gray-700 rounded-lg text-center">
+//                     <p className="text-lg text-yellow-300 font-semibold mb-2">Your combination is:</p>
+//                     <p className="text-2xl text-white font-bold">
+//                         {result.mood} {result.genre}
+//                     </p>
+//                     <p className="mt-4 text-gray-300 italic">
+//                         What will you create with this combination?
+//                     </p>
+//                 </div>
+//             )}
+//         </div>
+//     );
+// }

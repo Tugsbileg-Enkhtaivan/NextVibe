@@ -17,7 +17,7 @@ export const saveUserRecommendationHistory = async (
   recommendation: RecommendationData
 ) => {
   try {
-    return await prisma.userRecommendation.create({
+    return await prisma.recommendation.create({
       data: {
         userId,
         mood: recommendation.mood,

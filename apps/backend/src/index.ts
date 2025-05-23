@@ -11,10 +11,11 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
-const allowedOrigins = [
-  "http://localhost:3000",
-  "https://next-vibe-frontend.vercel.app",
-];
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",").map((origin) =>
+  origin.trim()
+) || ["http://localhost:3000", "https://next-vibe-frontend.vercel.app"];
+
+console.log("Allowed origins:", allowedOrigins);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin;
@@ -23,10 +24,15 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   }
   res.header(
     "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept"
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
   );
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.header("Access-Control-Allow-Credentials", "true");
   next();
+});
+
+app.options("*", (req, res) => {
+  res.sendStatus(200);
 });
 
 app.use(express.json());

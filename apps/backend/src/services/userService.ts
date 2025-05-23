@@ -244,7 +244,6 @@ export const getUserFavorites = async (userId: string) => {
   }
 };
 
-
 export const getMoodBasedRecommendations = async (
   userId: string,
   mood: MoodType,

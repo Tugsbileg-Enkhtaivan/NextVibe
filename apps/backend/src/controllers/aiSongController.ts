@@ -4,26 +4,92 @@ import {
   authenticateSpotify,
   searchAlbums,
   searchTracks,
+  getUserRecentlyPlayed,
 } from "../services/spotifyService";
 import { isAlbumSearchResponse, isTrackSearchResponse } from "../utils/spotifyUtils";
+import { searchYouTubeVideos } from "../services/youtubeService";
+import { 
+  saveUserRecommendationHistory, 
+  getUserRecommendationHistory,
+  addToUserFavorites,
+  getUserFavorites,
+  removeFromUserFavorites
+} from "../services/userService";
+import { MoodType, RecommendationType } from "@prisma/client";
 
-export const getAISongSuggestions = async (req: Request, res: Response) => {
+const userRecommendationCache = new Map<string, {
+  timestamp: number,
+  songs: any[],
+  albums: any[]
+}>();
+
+const CACHE_EXPIRATION = 6 * 60 * 60 * 1000;
+
+const convertToMoodType = (mood: string): MoodType => {
+  const moodUpper = mood.toUpperCase() as keyof typeof MoodType;
+  return MoodType[moodUpper] || MoodType.HAPPY;
+};
+
+export const getAISongSuggestions = async (req: Request, res: Response): Promise<void> => {
   const { mood, genre } = req.query as { mood: string; genre: string };
+  const userId = req.user?.id || 'anonymous'; 
+
+  if (!mood || !genre) {
+    res.status(400).json({ error: "Mood and genre are required parameters" });
+    return;
+  }
 
   try {
     await authenticateSpotify();
-
-    const variation = Math.random() > 0.5 ? "Include some lesser-known or international picks." : "Try to mix decades and avoid repeat suggestions.";
+    
+    const cacheKey = `${userId}-${mood}-${genre}`;
+    const cachedRecommendations = userRecommendationCache.get(cacheKey);
+    
+    const shouldUseCache = cachedRecommendations && 
+                          (Date.now() - cachedRecommendations.timestamp < CACHE_EXPIRATION) &&
+                          (Math.random() > 0.3); 
+    
+    if (shouldUseCache) {
+      res.json({
+        songs: cachedRecommendations.songs,
+        albums: cachedRecommendations.albums,
+        fromCache: true
+      });
+      return;
+    }
+    
+    let recentlyPlayedTracks: string[] = [];
+    try {
+      if (userId !== 'anonymous') {
+        const recentlyPlayed = await getUserRecentlyPlayed(userId);
+        recentlyPlayedTracks = recentlyPlayed.map(item => item.track.id);
+      }
+    } catch (error) {
+      console.warn("Failed to get recently played tracks:", error);
+    }
+    
+    let previousRecommendations: string[] = [];
+    try {
+      if (userId !== 'anonymous') {
+        const history = await getUserRecommendationHistory(userId);
+        previousRecommendations = history.flatMap(rec => [
+          ...(rec.tracks?.map(track => track.trackId) || []),
+          ...(rec.albums?.map(album => album.albumId) || [])
+        ]);
+      }
+    } catch (error) {
+      console.warn("Failed to get recommendation history:", error);
+    }
 
     const prompt = `
-You are a music recommendation engine.
+You are a music recommendation engine for Spotify.
 
-Suggest 5 unique SONGS and 5 unique  ALBUMS based on the following:
+Suggest 5 popular SONGS and 5 notable ALBUMS that are definitely available on Spotify based on the following:
 
 Mood: ${mood}
 Genre: ${genre}
 
-${variation}
+Important: Suggest a diverse mix of artists and time periods. Include some lesser-known gems alongside popular choices.
 
 Only output in the following format — no extra comments or explanations:
 
@@ -53,36 +119,77 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       return;
     }
 
-    const parseList = (text: string) =>
-      text
+    const parseList = (text: string) => {
+      return text
         .trim()
         .split("\n")
-        .map((line) => line.match(/^\d+\.\s*(.+?)\s*-\s*(.+)$/))
-        .filter(Boolean)
-        .map(([, name, artist]) => ({
-          name: name.trim(),
-          artist: artist.trim(),
-        }));
+        .filter(line => line.trim() !== '')
+        .map((line) => {
+          const match = line.match(/^\d+\.\s*(.+?)\s*-\s*(.+)$/);
+          if (!match) return null;
+          return {
+            name: match[1].trim(),
+            artist: match[2].trim(),
+          };
+        })
+        .filter(Boolean);
+    };
 
     const songs = parseList(songsSection[1]);
     const albums = parseList(albumsSection[1]);
 
-    const verifiedSongs = await Promise.all(
-      songs.map(async ({ name: songName, artist: artistName }) => {
-        const result = await searchTracks(`${songName} ${artistName}`);
+    const getBackupSuggestions = async (type: 'tracks' | 'albums', searchTerm: string, count: number, excludeIds: string[] = []) => {
+      if (type === 'tracks') {
+        const result = await searchTracks(`${genre} ${mood}`);
+        if (isTrackSearchResponse(result) && result.tracks.items.length > 0) {
+          return result.tracks.items
+            .filter(track => !excludeIds.includes(track.id))
+            .slice(0, count);
+        }
+      } else {
+        const result = await searchAlbums(`${genre} ${mood}`);
+        if (isAlbumSearchResponse(result) && result.albums.items.length > 0) {
+          return result.albums.items
+            .filter(album => !excludeIds.includes(album.id))
+            .slice(0, count);
+        }
+      }
+      return [];
+    };
+
+    let verifiedSongs = await Promise.all(
+      songs.map(async (item) => {
+        if (!item) return null;
+        const { name: songName, artist: artistName } = item;
+        
+        const result = await searchTracks(`track:${songName} artist:${artistName}`);
         if (!isTrackSearchResponse(result)) return null;
     
-        const track = result.tracks.items.find(
-          (t) =>
-            t.artists.some((a) =>
-              a.name.toLowerCase().includes(artistName.toLowerCase())
-            ) &&
+        let track = result.tracks.items
+          .filter(t => !recentlyPlayedTracks.includes(t.id) && !previousRecommendations.includes(t.id))
+          .find(t =>
+            t.artists.some(a => a.name.toLowerCase().includes(artistName.toLowerCase())) &&
             t.name.toLowerCase().includes(songName.toLowerCase())
-        );
+          );
     
-        if (!track) {
-          console.warn(`Song not found: ${songName} by ${artistName}`);
-          return null;
+        if (!track && result.tracks.items.length > 0) {
+          track = result.tracks.items[0];
+        }
+        
+        if (!track) return null;
+        
+        let youtubeData = null;
+        try {
+          const youtubeResults = await searchYouTubeVideos(`${track.name} ${track.artists[0].name} official audio`);
+          if (youtubeResults && youtubeResults.length > 0) {
+            youtubeData = {
+              videoId: youtubeResults[0].id.videoId,
+              title: youtubeResults[0].snippet.title,
+              thumbnail: youtubeResults[0].snippet.thumbnails.high.url
+            };
+          }
+        } catch (error) {
+          console.warn(`YouTube search failed for ${track.name}:`, error);
         }
     
         return {
@@ -92,44 +199,230 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
           albumName: track.album.name,
           albumId: track.album.id,
           albumCover: track.album.images?.[0]?.url || null,
+          previewUrl: track.preview_url,
+          spotifyUrl: track.external_urls?.spotify || null,
+          youtubeData
         };
       })
     );
     
+    if (verifiedSongs.filter(Boolean).length < 5) {
+      const backupTracks = await getBackupSuggestions(
+        'tracks', 
+        `${genre} ${mood}`, 
+        5 - verifiedSongs.filter(Boolean).length,
+        [...recentlyPlayedTracks, ...previousRecommendations]
+      );
+      
+      const backupSongsWithYoutube = await Promise.all(backupTracks.map(async track => {
+        let youtubeData = null;
+        try {
+          const youtubeResults = await searchYouTubeVideos(`${track.name} ${track.artists[0].name} official audio`);
+          if (youtubeResults && youtubeResults.length > 0) {
+            youtubeData = {
+              videoId: youtubeResults[0].id.videoId,
+              title: youtubeResults[0].snippet.title,
+              thumbnail: youtubeResults[0].snippet.thumbnails.high.url
+            };
+          }
+        } catch (error) {
+          console.warn(`YouTube search failed for backup track ${track.name}:`, error);
+        }
+        
+        return {
+          songName: track.name,
+          artistName: track.artists[0].name,
+          songId: track.id,
+          albumName: track.album.name,
+          albumId: track.album.id,
+          albumCover: track.album.images?.[0]?.url || null,
+          previewUrl: track.preview_url,
+          spotifyUrl: track.external_urls?.spotify || null,
+          youtubeData
+        };
+      }));
+      
+      verifiedSongs = [...verifiedSongs.filter(Boolean), ...backupSongsWithYoutube];
+    }
 
-    const verifiedAlbums = await Promise.all(
-      albums.map(async ({ name: albumName, artist: artistName }) => {
-        const result = await searchAlbums(`${albumName} ${artistName}`);
+    let verifiedAlbums = await Promise.all(
+      albums.map(async (item) => {
+        if (!item) return null;
+        const { name: albumName, artist: artistName } = item;
+        
+        const result = await searchAlbums(`album:${albumName} artist:${artistName}`);
         if (!isAlbumSearchResponse(result)) return null;
     
-        const album = result.albums.items.find(
-          (a) =>
-            a.artists.some((artist) =>
-              artist.name.toLowerCase().includes(artistName.toLowerCase())
-            ) &&
+        let album = result.albums.items
+          .filter(a => !previousRecommendations.includes(a.id))
+          .find(a =>
+            a.artists.some(artist => artist.name.toLowerCase().includes(artistName.toLowerCase())) &&
             a.name.toLowerCase().includes(albumName.toLowerCase())
-        );
+          );
     
-        if (!album) {
-          console.warn(`Album not found: ${albumName} by ${artistName}`);
-          return null;
+        if (!album && result.albums.items.length > 0) {
+          album = result.albums.items[0];
         }
+        
+        if (!album) return null;
     
         return {
           albumName: album.name,
           artistName: album.artists[0].name,
           albumId: album.id,
           albumCover: album.images?.[0]?.url || null,
+          spotifyUrl: album.external_urls?.spotify || null,
+          releaseDate: album.release_date || null,
         };
       })
     );
     
+    if (verifiedAlbums.filter(Boolean).length < 5) {
+      const backupAlbums = await getBackupSuggestions(
+        'albums', 
+        `${genre} ${mood}`, 
+        5 - verifiedAlbums.filter(Boolean).length,
+        previousRecommendations
+      );
+      
+      const processedBackupAlbums = backupAlbums.map(album => ({
+        albumName: album.name,
+        artistName: album.artists[0].name,
+        albumId: album.id,
+        albumCover: album.images?.[0]?.url || null,
+        spotifyUrl: album.external_urls?.spotify || null,
+        releaseDate: album.release_date || null,
+      }));
+      
+      verifiedAlbums = [...verifiedAlbums.filter(Boolean), ...processedBackupAlbums];
+    }
+    
+    const finalSongs = verifiedSongs.slice(0, 5);
+    const finalAlbums = verifiedAlbums.slice(0, 5);
+    
+    userRecommendationCache.set(cacheKey, {
+      timestamp: Date.now(),
+      songs: finalSongs,
+      albums: finalAlbums
+    });
+    
+    if (userId !== 'anonymous') {
+      try {
+        await saveUserRecommendationHistory(userId, {
+          type: RecommendationType.MOOD_BASED,
+          mood: convertToMoodType(mood),
+          genres: [genre],
+          seedTracks: [],
+          seedArtists: [],
+          parameters: { mood, genre },
+          tracks: finalSongs.map((song, index) => ({
+            trackId: song.songId,
+            position: index,
+            name: song.songName,
+            artistNames: [song.artistName],
+            albumName: song.albumName,
+            imageUrl: song.albumCover,
+            previewUrl: song.previewUrl,
+            duration: null,
+            popularity: null
+          })),
+          albums: finalAlbums.map((album, index) => ({
+            albumId: album.albumId,
+            position: index,
+            name: album.albumName,
+            artistNames: [album.artistName],
+            imageUrl: album.albumCover,
+            releaseDate: album.releaseDate,
+            totalTracks: null
+          }))
+        });
+      } catch (error) {
+        console.warn("Failed to save recommendation history:", error);
+      }
+    }
+
     res.json({
-      songs: verifiedSongs.filter(Boolean),
-      albums: verifiedAlbums.filter(Boolean),
+      songs: finalSongs,
+      albums: finalAlbums,
+      fromCache: false
     });
   } catch (err: any) {
-    console.error("[AI SONG SEARCH ERROR]", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("[AI SONG SEARCH ERROR]", err.message || err);
+    res.status(500).json({ error: "Failed to retrieve music recommendations" });
+  }
+};
+
+export const addToFavorites = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.id;
+  const { itemId, itemType } = req.body;
+  
+  if (!userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  
+  if (!itemId || !itemType || !['song', 'album'].includes(itemType)) {
+    res.status(400).json({ error: "Invalid request. Required: itemId and itemType (song or album)" });
+    return;
+  }
+  
+  try {
+    await addToUserFavorites(userId, itemId, itemType);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[ADD TO FAVORITES ERROR]", error);
+    res.status(500).json({ error: "Failed to add item to favorites" });
+  }
+};
+
+export const removeFromFavorites = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.id;
+  const { itemId } = req.params;
+  
+  if (!userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  
+  try {
+    await removeFromUserFavorites(userId, itemId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[REMOVE FROM FAVORITES ERROR]", error);
+    res.status(500).json({ error: "Failed to remove item from favorites" });
+  }
+};
+
+export const getFavorites = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.id;
+  
+  if (!userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  
+  try {
+    const favorites = await getUserFavorites(userId);
+    res.json(favorites);
+  } catch (error) {
+    console.error("[GET FAVORITES ERROR]", error);
+    res.status(500).json({ error: "Failed to retrieve favorites" });
+  }
+};
+
+export const getRecommendationHistory = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.id;
+  
+  if (!userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  
+  try {
+    const history = await getUserRecommendationHistory(userId);
+    res.json(history);
+  } catch (error) {
+    console.error("[GET HISTORY ERROR]", error);
+    res.status(500).json({ error: "Failed to retrieve recommendation history" });
   }
 };

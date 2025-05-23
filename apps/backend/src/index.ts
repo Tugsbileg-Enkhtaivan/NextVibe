@@ -3,7 +3,7 @@ import express, { Request, Response, NextFunction } from "express";
 import { PrismaClient } from "@prisma/client";
 import cors from "cors";
 import aiSongRouter from "./routes/aiSongRouter";
-import spotifyRouter from "./routes/spotifyRouter";
+// import spotifyRouter from "./routes/spotifyRouter";
 import { verifyToken } from "@clerk/backend";
 
 dotenv.config();
@@ -14,8 +14,8 @@ const prisma = new PrismaClient();
 app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 app.use(express.json());
 
-app.use("/api/ai-song-search", aiSongRouter);
-app.use("/api/spotify", spotifyRouter);
+app.use("/api", aiSongRouter);
+// app.use("/api/spotify", spotifyRouter);
 
 const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
   const { authorization } = req.headers;

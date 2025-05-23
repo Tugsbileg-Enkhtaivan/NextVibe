@@ -350,25 +350,3 @@ const SwiperCarousel = () => {
 };
 
 export default SwiperCarousel;
-
-// uchStart = (e) => {
-//     handleStart(e.touches[0].clientX);
-// };
-
-// const handleTouchMove = (e) => {
-//     handleMove(e.touches[0].clientX);
-// };
-
-// const handleTouchEnd = () => {
-//     handleEnd();
-// };
-
-// // Auto-play functionality
-// useEffect(() => {
-//     if (!isAutoPlaying || isDragging) return;
-
-//     const interval = setInterval(() => {
-//         setCurrentIndex((prevIndex) =>
-//             prevIndex === slides.length - 1 ? 0 : prevIndex + 1
-//         );
-//     }, 4000);

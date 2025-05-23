@@ -1,6 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
+import api from '../lib/axios';
+
+type Result = {
+    mood: string,
+    genre: string
+}
 
 export default function SlotMachine() {
     // Define our reels
@@ -24,7 +30,7 @@ export default function SlotMachine() {
 
     // State variables
     const [spinning, setSpinning] = useState(false);
-    const [result, setResult] = useState(null);
+    const [result, setResult] = useState<Result | null>(null);
     const [moodIndex, setMoodIndex] = useState(0);
     const [genreIndex, setGenreIndex] = useState(0);
     const spinTimerRef = useRef(null);
@@ -44,9 +50,9 @@ export default function SlotMachine() {
         spinCountRef.current += 1;
 
         // Gradually slow down and eventually stop
-        const nextDelay = Math.min(300, 50 + spinCountRef.current * 3);
+        const nextDelay = Math.min(200, 50 + spinCountRef.current * 3);
 
-        if (nextDelay < 300) {
+        if (nextDelay < 200) {
             spinTimerRef.current = setTimeout(animateSpin, nextDelay);
         } else {
             // Stop spinning and set final result
@@ -84,13 +90,16 @@ export default function SlotMachine() {
         };
     }, []);
 
-    const handleSubmit = async () => {
-        if (!mood) return alert('Please select a mood');
+    useEffect(() => {
+        setGenre(result?.genre);
+        setMood(result?.mood)
+    }, [result]);
 
+    const getData = async () => {
         try {
             setLoading(true);
 
-            const res = await api.get('/api/ai-song-search', {
+            const res = await api.get('/recommendations', {
                 params: {
                     mood,
                     genre,
@@ -102,11 +111,14 @@ export default function SlotMachine() {
 
         } catch (err) {
             console.error('Fetch error:', err);
-            alert('Failed to fetch suggestions');
+            // alert('Failed to fetch suggestions');
         } finally {
             setLoading(false);
         }
     };
+    useEffect(() => {
+        getData()
+    }, [])
 
     return (
         <div className="flex flex-col items-center w-full max-w-md mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
@@ -165,8 +177,8 @@ export default function SlotMachine() {
                 </div>
             )} */}
 
-            {(songs.length > 0 || albums.length > 0) && (
-                <div className="mt-10 space-y-6">
+            {result && (
+                <div className="mt-10 space-y-6 text-white">
                     {songs.length > 0 && (
                         <div>
                             <h2 className="text-xl font-bold mb-2">Songs</h2>

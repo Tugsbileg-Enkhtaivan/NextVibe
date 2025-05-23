@@ -5,14 +5,22 @@ import React, { useState, useEffect, useRef } from 'react';
 export default function SlotMachine() {
     // Define our reels
     const moods = [
-        "Happy", "Sad", "Mysterious", "Romantic",
-        "Nostalgic", "Suspenseful", "Peaceful", "Energetic"
+        "Happy", "Sad", "Energetic", "Calm", 'Angry', 'Romantic', 'Focused', 'Chill', 'Melancholic', 'Very happy'
     ];
 
     const genres = [
-        "Comedy", "Drama", "Horror", "Sci-Fi",
-        "Fantasy", "Action", "Adventure", "Musical"
-    ];
+        "Rock",
+        "Hip Hop / Rap",
+        "Jazz",
+        "Classical",
+        "Pop",
+        "Electronic / EDM",
+        "Country",
+        "Reggae",
+        "Blues",
+        "R&B / Soul"
+    ]
+
 
     // State variables
     const [spinning, setSpinning] = useState(false);
@@ -21,6 +29,11 @@ export default function SlotMachine() {
     const [genreIndex, setGenreIndex] = useState(0);
     const spinTimerRef = useRef(null);
     const spinCountRef = useRef(0);
+    const [mood, setMood] = useState<string | null>(null);
+    const [genre, setGenre] = useState<string | null>(null);
+    const [songs, setSongs] = useState<any[]>([]);
+    const [albums, setAlbums] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
 
     // Function to animate the spinning reels
     const animateSpin = () => {
@@ -71,6 +84,30 @@ export default function SlotMachine() {
         };
     }, []);
 
+    const handleSubmit = async () => {
+        if (!mood) return alert('Please select a mood');
+
+        try {
+            setLoading(true);
+
+            const res = await api.get('/api/ai-song-search', {
+                params: {
+                    mood,
+                    genre,
+                },
+            });
+
+            setSongs(res.data.songs || []);
+            setAlbums(res.data.albums || []);
+
+        } catch (err) {
+            console.error('Fetch error:', err);
+            alert('Failed to fetch suggestions');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="flex flex-col items-center w-full max-w-md mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
             <h1 className="text-2xl font-bold mb-6 text-yellow-300">Mood & Genre Slot Machine</h1>
@@ -116,7 +153,7 @@ export default function SlotMachine() {
             </div>
 
             {/* Result message */}
-            {result && (
+            {/* {result && (
                 <div className="mt-4 p-4 bg-gray-700 rounded-lg text-center">
                     <p className="text-lg text-yellow-300 font-semibold mb-2">Your combination is:</p>
                     <p className="text-2xl text-white font-bold">
@@ -125,6 +162,38 @@ export default function SlotMachine() {
                     <p className="mt-4 text-gray-300 italic">
                         What will you create with this combination?
                     </p>
+                </div>
+            )} */}
+
+            {(songs.length > 0 || albums.length > 0) && (
+                <div className="mt-10 space-y-6">
+                    {songs.length > 0 && (
+                        <div>
+                            <h2 className="text-xl font-bold mb-2">Songs</h2>
+                            {songs.map((song, i) => (
+                                <div key={i} className="p-2 border rounded my-1 flex gap-2 items-center">
+                                    <img src={song.albumCover} alt={song.songName} width={60} />
+                                    <div>
+                                        <p>{song.songName} - {song.artistName}</p>
+                                        <p className="text-sm text-gray-500">{song.albumName}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {albums.length > 0 && (
+                        <div>
+                            <h2 className="text-xl font-bold mb-2">Albums</h2>
+                            {albums.map((album, i) => (
+                                <div key={i} className="p-2 border rounded my-1 flex gap-2 items-center">
+                                    <img src={album.albumCover} alt={album.albumName} width={60} />
+                                    <p>{album.albumName} - {album.artistName}</p>
+                                    {/* <button onClick={() => handleFavoriteSong(song)}>❤️ Save</button> */}
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
         </div>

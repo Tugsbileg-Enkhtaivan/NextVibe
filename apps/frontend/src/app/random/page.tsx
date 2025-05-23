@@ -97,7 +97,7 @@ export default function SlotMachine() {
 
     const getData = async () => {
         try {
-            setLoading(true);
+            // setLoading(true);
 
             const res = await api.get('/recommendations', {
                 params: {
@@ -108,17 +108,20 @@ export default function SlotMachine() {
 
             setSongs(res.data.songs || []);
             setAlbums(res.data.albums || []);
+            console.log(res.data.songs, "jklajsd")
 
         } catch (err) {
             console.error('Fetch error:', err);
             // alert('Failed to fetch suggestions');
-        } finally {
-            setLoading(false);
-        }
+        } 
+        // finally {
+        //     setLoading(false);
+        // }
     };
     useEffect(() => {
         getData()
-    }, [])
+    }, [mood])
+
 
     return (
         <div className="flex flex-col items-center w-full max-w-md mx-auto bg-gray-800 rounded-lg shadow-lg p-6">

@@ -11,30 +11,50 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+const allowedOrigins = [
+  "http://localhost:3000", // local dev
+  "https://next-vibe-frontend-qn88s1oxy-frontend-enjoyers.vercel.app", // production
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 app.use("/api", aiSongRouter);
 // app.use("/api/spotify", spotifyRouter);
 
-const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
+const isAuthenticated = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const { authorization } = req.headers;
 
   const token = authorization?.split(" ")[1];
   if (!token) {
-    res.status(401).json({ error: "Unauthorzied" })
+    res.status(401).json({ error: "Unauthorzied" });
     return;
   }
   try {
     const verifyiedToken = await verifyToken(token, {
       secretKey: process.env.CLERK_SECRET_KEY,
-    })
-    console.log(verifyiedToken, "verifyiedToken")
+    });
+    console.log(verifyiedToken, "verifyiedToken");
     next();
   } catch (error) {
-    res.status(401).json({ error: "Unauthorzied" })
+    res.status(401).json({ error: "Unauthorzied" });
   }
-}
+};
 
 app.get("/", isAuthenticated, async (_req: Request, res: Response) => {
   const users = await prisma.user.findMany();

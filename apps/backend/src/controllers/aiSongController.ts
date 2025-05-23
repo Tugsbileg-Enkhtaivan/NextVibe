@@ -15,20 +15,25 @@ import {
   getUserFavorites,
   removeFromUserFavorites
 } from "../services/userService";
+import { MoodType, RecommendationType } from "@prisma/client";
 
-// Cache to store previously recommended songs to avoid repetition
 const userRecommendationCache = new Map<string, {
   timestamp: number,
   songs: any[],
   albums: any[]
 }>();
 
-// Cache expiration time (6 hours in milliseconds)
 const CACHE_EXPIRATION = 6 * 60 * 60 * 1000;
+
+// Helper function to convert string mood to MoodType enum
+const convertToMoodType = (mood: string): MoodType => {
+  const moodUpper = mood.toUpperCase() as keyof typeof MoodType;
+  return MoodType[moodUpper] || MoodType.HAPPY; // Default fallback
+};
 
 export const getAISongSuggestions = async (req: Request, res: Response): Promise<void> => {
   const { mood, genre } = req.query as { mood: string; genre: string };
-  const userId = req.user?.id || 'anonymous'; // Assuming you have user auth middleware
+  const userId = req.user?.id || 'anonymous'; 
 
   if (!mood || !genre) {
     res.status(400).json({ error: "Mood and genre are required parameters" });
@@ -38,15 +43,12 @@ export const getAISongSuggestions = async (req: Request, res: Response): Promise
   try {
     await authenticateSpotify();
     
-    // Check if we have recent recommendations for this user with same mood/genre
     const cacheKey = `${userId}-${mood}-${genre}`;
     const cachedRecommendations = userRecommendationCache.get(cacheKey);
     
-    // Use cached recommendations if they exist and are less than 6 hours old
-    // Add randomization to sometimes generate new recommendations even if cache exists
     const shouldUseCache = cachedRecommendations && 
                           (Date.now() - cachedRecommendations.timestamp < CACHE_EXPIRATION) &&
-                          (Math.random() > 0.3); // 70% chance to use cache, 30% to generate new
+                          (Math.random() > 0.3); 
     
     if (shouldUseCache) {
       res.json({
@@ -57,31 +59,31 @@ export const getAISongSuggestions = async (req: Request, res: Response): Promise
       return;
     }
     
-    // Get user's recently played tracks to avoid recommending them again
     let recentlyPlayedTracks: string[] = [];
     try {
       if (userId !== 'anonymous') {
         const recentlyPlayed = await getUserRecentlyPlayed(userId);
-        recentlyPlayedTracks = recentlyPlayed.map(track => track.id);
+        // Fix: Access track.id from Spotify's PlayHistoryObject structure
+        recentlyPlayedTracks = recentlyPlayed.map(item => item.track.id);
       }
     } catch (error) {
       console.warn("Failed to get recently played tracks:", error);
     }
     
-    // Get previous recommendations to avoid repeating them
     let previousRecommendations: string[] = [];
     try {
       if (userId !== 'anonymous') {
         const history = await getUserRecommendationHistory(userId);
-        previousRecommendations = history.flatMap(rec => 
-          [...(rec.songs?.map(s => s.songId) || []), ...(rec.albums?.map(a => a.albumId) || [])]
-        );
+        // Fix: Access tracks and albums arrays from Recommendation model
+        previousRecommendations = history.flatMap(rec => [
+          ...(rec.tracks?.map(track => track.trackId) || []),
+          ...(rec.albums?.map(album => album.albumId) || [])
+        ]);
       }
     } catch (error) {
       console.warn("Failed to get recommendation history:", error);
     }
 
-    // Create a more specific prompt with history avoidance
     const prompt = `
 You are a music recommendation engine for Spotify.
 
@@ -120,7 +122,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       return;
     }
 
-    // Improved parsing with better error handling
     const parseList = (text: string) => {
       return text
         .trim()
@@ -140,12 +141,10 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
     const songs = parseList(songsSection[1]);
     const albums = parseList(albumsSection[1]);
 
-    // Improved backup recommendations mechanism
     const getBackupSuggestions = async (type: 'tracks' | 'albums', searchTerm: string, count: number, excludeIds: string[] = []) => {
       if (type === 'tracks') {
         const result = await searchTracks(`${genre} ${mood}`);
         if (isTrackSearchResponse(result) && result.tracks.items.length > 0) {
-          // Filter out recently played or previously recommended tracks
           return result.tracks.items
             .filter(track => !excludeIds.includes(track.id))
             .slice(0, count);
@@ -153,7 +152,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       } else {
         const result = await searchAlbums(`${genre} ${mood}`);
         if (isAlbumSearchResponse(result) && result.albums.items.length > 0) {
-          // Filter out previously recommended albums
           return result.albums.items
             .filter(album => !excludeIds.includes(album.id))
             .slice(0, count);
@@ -162,7 +160,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       return [];
     };
 
-    // Process songs with YouTube integration
     let verifiedSongs = await Promise.all(
       songs.map(async (item) => {
         if (!item) return null;
@@ -171,7 +168,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
         const result = await searchTracks(`track:${songName} artist:${artistName}`);
         if (!isTrackSearchResponse(result)) return null;
     
-        // Find the best match while avoiding recently played tracks
         let track = result.tracks.items
           .filter(t => !recentlyPlayedTracks.includes(t.id) && !previousRecommendations.includes(t.id))
           .find(t =>
@@ -179,14 +175,12 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
             t.name.toLowerCase().includes(songName.toLowerCase())
           );
     
-        // If no filtered matches found, try unfiltered
         if (!track && result.tracks.items.length > 0) {
           track = result.tracks.items[0];
         }
         
         if (!track) return null;
         
-        // Find YouTube video for the track
         let youtubeData = null;
         try {
           const youtubeResults = await searchYouTubeVideos(`${track.name} ${track.artists[0].name} official audio`);
@@ -215,7 +209,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       })
     );
     
-    // Add backup songs if needed
     if (verifiedSongs.filter(Boolean).length < 5) {
       const backupTracks = await getBackupSuggestions(
         'tracks', 
@@ -225,7 +218,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       );
       
       const backupSongsWithYoutube = await Promise.all(backupTracks.map(async track => {
-        // Find YouTube video for backup tracks too
         let youtubeData = null;
         try {
           const youtubeResults = await searchYouTubeVideos(`${track.name} ${track.artists[0].name} official audio`);
@@ -256,7 +248,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       verifiedSongs = [...verifiedSongs.filter(Boolean), ...backupSongsWithYoutube];
     }
 
-    // Process albums while avoiding previously recommended ones
     let verifiedAlbums = await Promise.all(
       albums.map(async (item) => {
         if (!item) return null;
@@ -265,7 +256,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
         const result = await searchAlbums(`album:${albumName} artist:${artistName}`);
         if (!isAlbumSearchResponse(result)) return null;
     
-        // Find best match while avoiding previous recommendations
         let album = result.albums.items
           .filter(a => !previousRecommendations.includes(a.id))
           .find(a =>
@@ -273,7 +263,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
             a.name.toLowerCase().includes(albumName.toLowerCase())
           );
     
-        // If no filtered matches found, try unfiltered
         if (!album && result.albums.items.length > 0) {
           album = result.albums.items[0];
         }
@@ -291,7 +280,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       })
     );
     
-    // Add backup albums if needed
     if (verifiedAlbums.filter(Boolean).length < 5) {
       const backupAlbums = await getBackupSuggestions(
         'albums', 
@@ -312,26 +300,44 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       verifiedAlbums = [...verifiedAlbums.filter(Boolean), ...processedBackupAlbums];
     }
     
-    // Limit to exactly 5 songs and 5 albums
     const finalSongs = verifiedSongs.slice(0, 5);
     const finalAlbums = verifiedAlbums.slice(0, 5);
     
-    // Save recommendations to cache
     userRecommendationCache.set(cacheKey, {
       timestamp: Date.now(),
       songs: finalSongs,
       albums: finalAlbums
     });
     
-    // Save to user history if authenticated
     if (userId !== 'anonymous') {
       try {
         await saveUserRecommendationHistory(userId, {
-          mood,
-          genre,
-          timestamp: new Date(),
-          songs: finalSongs,
-          albums: finalAlbums
+          type: RecommendationType.MOOD_BASED,
+          mood: convertToMoodType(mood),
+          genres: [genre],
+          seedTracks: [],
+          seedArtists: [],
+          parameters: { mood, genre },
+          tracks: finalSongs.map((song, index) => ({
+            trackId: song.songId,
+            position: index,
+            name: song.songName,
+            artistNames: [song.artistName],
+            albumName: song.albumName,
+            imageUrl: song.albumCover,
+            previewUrl: song.previewUrl,
+            duration: null,
+            popularity: null
+          })),
+          albums: finalAlbums.map((album, index) => ({
+            albumId: album.albumId,
+            position: index,
+            name: album.albumName,
+            artistNames: [album.artistName],
+            imageUrl: album.albumCover,
+            releaseDate: album.releaseDate,
+            totalTracks: null
+          }))
         });
       } catch (error) {
         console.warn("Failed to save recommendation history:", error);
@@ -349,7 +355,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
   }
 };
 
-// Save a track or album to user favorites
 export const addToFavorites = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user?.id;
   const { itemId, itemType } = req.body;
@@ -373,7 +378,6 @@ export const addToFavorites = async (req: Request, res: Response): Promise<void>
   }
 };
 
-// Remove a track or album from user favorites
 export const removeFromFavorites = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user?.id;
   const { itemId } = req.params;
@@ -392,7 +396,6 @@ export const removeFromFavorites = async (req: Request, res: Response): Promise<
   }
 };
 
-// Get user favorites
 export const getFavorites = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user?.id;
   
@@ -410,7 +413,6 @@ export const getFavorites = async (req: Request, res: Response): Promise<void> =
   }
 };
 
-// Get user recommendation history
 export const getRecommendationHistory = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user?.id;
   

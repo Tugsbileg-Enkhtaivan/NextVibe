@@ -240,8 +240,9 @@ enum MoodType {
   FOCUSED
   PARTY
   CHILL
-  WORKOUT
   MELANCHOLIC
+  VERY_HAPPY
+  NEUTRAL
 }
 
 enum EnergyLevel {

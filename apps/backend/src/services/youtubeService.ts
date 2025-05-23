@@ -7,7 +7,6 @@ const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3/search';
 
 /**
- * Search for YouTube videos matching the query
  * @param query Search query
  * @param maxResults Maximum number of results to return (default: 1)
  * @returns Array of YouTube video results

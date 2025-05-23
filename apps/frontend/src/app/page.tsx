@@ -20,7 +20,7 @@ export default function HomePage() {
     try {
       setLoading(true);
 
-      const res = await api.get('/api/ai-song-search', {
+      const res = await api.get('/recommendations', {
         params: {
           mood,
           genre,

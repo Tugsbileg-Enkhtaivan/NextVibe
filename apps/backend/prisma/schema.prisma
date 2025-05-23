@@ -242,7 +242,6 @@ enum MoodType {
   CHILL
   MELANCHOLIC
   VERY_HAPPY
-  NEUTRAL
 }
 
 enum EnergyLevel {

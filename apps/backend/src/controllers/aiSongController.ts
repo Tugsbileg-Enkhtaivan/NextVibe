@@ -25,10 +25,9 @@ const userRecommendationCache = new Map<string, {
 
 const CACHE_EXPIRATION = 6 * 60 * 60 * 1000;
 
-// Helper function to convert string mood to MoodType enum
 const convertToMoodType = (mood: string): MoodType => {
   const moodUpper = mood.toUpperCase() as keyof typeof MoodType;
-  return MoodType[moodUpper] || MoodType.HAPPY; // Default fallback
+  return MoodType[moodUpper] || MoodType.HAPPY;
 };
 
 export const getAISongSuggestions = async (req: Request, res: Response): Promise<void> => {
@@ -63,7 +62,6 @@ export const getAISongSuggestions = async (req: Request, res: Response): Promise
     try {
       if (userId !== 'anonymous') {
         const recentlyPlayed = await getUserRecentlyPlayed(userId);
-        // Fix: Access track.id from Spotify's PlayHistoryObject structure
         recentlyPlayedTracks = recentlyPlayed.map(item => item.track.id);
       }
     } catch (error) {
@@ -74,7 +72,6 @@ export const getAISongSuggestions = async (req: Request, res: Response): Promise
     try {
       if (userId !== 'anonymous') {
         const history = await getUserRecommendationHistory(userId);
-        // Fix: Access tracks and albums arrays from Recommendation model
         previousRecommendations = history.flatMap(rec => [
           ...(rec.tracks?.map(track => track.trackId) || []),
           ...(rec.albums?.map(album => album.albumId) || [])

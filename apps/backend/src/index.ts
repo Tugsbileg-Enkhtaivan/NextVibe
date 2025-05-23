@@ -12,18 +12,18 @@ const app = express();
 const prisma = new PrismaClient();
 
 const allowedOrigins = [
-  "http://localhost:3000", // local dev
-  "https://next-vibe-frontend-qn88s1oxy-frontend-enjoyers.vercel.app", // production
+  "http://localhost:3000",
+  "https://next-vibe-frontend.vercel.app/",
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
       }
-      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })

@@ -6,7 +6,29 @@ dotenv.config();
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3/search';
 
+interface YouTubeVideoSnippet {
+  title: string;
+  description: string;
+  thumbnails: {
+    default: { url: string };
+    medium: { url: string };
+    high: { url: string };
+  };
+  channelTitle: string;
+  publishedAt: string;
+}
+
+interface YouTubeVideoItem {
+  id: { videoId: string };
+  snippet: YouTubeVideoSnippet;
+}
+
+interface YouTubeSearchResponse {
+  items: YouTubeVideoItem[];
+}
+
 /**
+ * Search for YouTube videos
  * @param query Search query
  * @param maxResults Maximum number of results to return (default: 1)
  * @returns Array of YouTube video results
@@ -14,29 +36,25 @@ const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3/search';
 export const searchYouTubeVideos = async (
   query: string,
   maxResults: number = 1
-): Promise<any[]> => {
+): Promise<YouTubeVideoItem[]> => {
   if (!YOUTUBE_API_KEY) {
     throw new Error('YouTube API key is not configured');
   }
 
   try {
-    const response = await axios.get(YOUTUBE_API_URL, {
+    const response = await axios.get<YouTubeSearchResponse>(YOUTUBE_API_URL, {
       params: {
         part: 'snippet',
         maxResults,
         q: query,
         key: YOUTUBE_API_KEY,
         type: 'video',
-        videoEmbeddable: true,
-        videoSyndicated: true
+        videoEmbeddable: 'true',
+        videoSyndicated: 'true'
       }
     });
 
-    if (response.data && response.data.items) {
-      return response.data.items;
-    }
-
-    return [];
+    return response.data.items;
   } catch (error: any) {
     console.error('YouTube API error:', error.response?.data || error.message);
     throw new Error(`YouTube search failed: ${error.message}`);

@@ -4,14 +4,33 @@ import { useState } from 'react';
 import SelectableGroup from '../../_components/SelectableGroup';
 import api from './lib/axios';
 
+// Define types for the API response
+interface Song {
+  songName?: string;
+  artistName?: string;
+  albumName?: string;
+  albumCover?: string | null;
+}
+
+interface Album {
+  albumName?: string;
+  artistName?: string;
+  albumCover?: string | null;
+}
+
+interface RecommendationsResponse {
+  songs?: Song[];
+  albums?: Album[];
+}
+
 const moods = ['Happy', 'Sad', 'Calm', 'Angry'];
 const genres = ['Lo-fi', 'Rock', 'Jazz', 'Ambient', 'Hip Hop', 'EMD', 'R&B'];
 
 export default function HomePage() {
   const [mood, setMood] = useState<string | null>(null);
   const [genre, setGenre] = useState<string | null>(null);
-  const [songs, setSongs] = useState<any[]>([]);
-  const [albums, setAlbums] = useState<any[]>([]);
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -20,7 +39,7 @@ export default function HomePage() {
     try {
       setLoading(true);
 
-      const res = await api.get('/recommendations', {
+      const res = await api.get<RecommendationsResponse>('/recommendations', {
         params: {
           mood,
           genre,
@@ -37,19 +56,6 @@ export default function HomePage() {
       setLoading(false);
     }
   };
-
-  // const handleFavoriteSong = async (song) => {
-  //   try {
-  //     await api.post("/api/favorites/song", {
-  //       ...song,
-  //       userId: user.id, // Clerk userId
-  //     });
-  //     alert("Saved to favorites!");
-  //   } catch (err) {
-  //     console.error(err);
-  //     alert("Failed to save song");
-  //   }
-  // };
   
 
   return (
@@ -73,12 +79,20 @@ export default function HomePage() {
           {songs.length > 0 && (
             <div>
               <h2 className="text-xl font-bold mb-2">Songs</h2>
-              {songs.map((song, i) => (
+              {songs
+                .filter(song => song && typeof song === 'object')
+                .map((song, i) => (
                 <div key={i} className="p-2 border rounded my-1 flex gap-2 items-center">
-                  <img src={song.albumCover} alt={song.songName} width={60} />
+                  {song?.albumCover ? (
+                    <img src={song.albumCover} alt={song?.songName || 'Song'} width={60} className="rounded" />
+                  ) : (
+                    <div className="w-15 h-15 bg-gray-200 rounded flex items-center justify-center text-gray-500 text-xs">
+                      No Image
+                    </div>
+                  )}
                   <div>
-                    <p>{song.songName} - {song.artistName}</p>
-                    <p className="text-sm text-gray-500">{song.albumName}</p>
+                    <p>{song?.songName || 'Unknown Song'} - {song?.artistName || 'Unknown Artist'}</p>
+                    <p className="text-sm text-gray-500">{song?.albumName || 'Unknown Album'}</p>
                   </div>
                 </div>
               ))}
@@ -88,10 +102,18 @@ export default function HomePage() {
           {albums.length > 0 && (
             <div>
               <h2 className="text-xl font-bold mb-2">Albums</h2>
-              {albums.map((album, i) => (
+              {albums
+                .filter(album => album && typeof album === 'object')
+                .map((album, i) => (
                 <div key={i} className="p-2 border rounded my-1 flex gap-2 items-center">
-                  <img src={album.albumCover} alt={album.albumName} width={60} />
-                  <p>{album.albumName} - {album.artistName}</p>
+                  {album?.albumCover ? (
+                    <img src={album.albumCover} alt={album?.albumName || 'Album'} width={60} className="rounded" />
+                  ) : (
+                    <div className="w-15 h-15 bg-gray-200 rounded flex items-center justify-center text-gray-500 text-xs">
+                      No Image
+                    </div>
+                  )}
+                  <p>{album?.albumName || 'Unknown Album'} - {album?.artistName || 'Unknown Artist'}</p>
                   {/* <button onClick={() => handleFavoriteSong(song)}>❤️ Save</button> */}
                 </div>
               ))}

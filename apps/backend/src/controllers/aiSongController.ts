@@ -141,14 +141,14 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
     const getBackupSuggestions = async (type: 'tracks' | 'albums', searchTerm: string, count: number, excludeIds: string[] = []) => {
       if (type === 'tracks') {
         const result = await searchTracks(`${genre} ${mood}`);
-        if (isTrackSearchResponse(result) && result.tracks.items.length > 0) {
+        if (result.tracks && result.tracks.items.length > 0) {
           return result.tracks.items
             .filter(track => !excludeIds.includes(track.id))
             .slice(0, count);
         }
       } else {
         const result = await searchAlbums(`${genre} ${mood}`);
-        if (isAlbumSearchResponse(result) && result.albums.items.length > 0) {
+        if (result.albums && result.albums.items.length > 0) {
           return result.albums.items
             .filter(album => !excludeIds.includes(album.id))
             .slice(0, count);
@@ -163,7 +163,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
         const { name: songName, artist: artistName } = item;
         
         const result = await searchTracks(`track:${songName} artist:${artistName}`);
-        if (!isTrackSearchResponse(result)) return null;
+        if (!result.tracks || result.tracks.items.length === 0) return null;
     
         let track = result.tracks.items
           .filter(t => !recentlyPlayedTracks.includes(t.id) && !previousRecommendations.includes(t.id))
@@ -206,44 +206,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       })
     );
     
-    if (verifiedSongs.filter(Boolean).length < 5) {
-      const backupTracks = await getBackupSuggestions(
-        'tracks', 
-        `${genre} ${mood}`, 
-        5 - verifiedSongs.filter(Boolean).length,
-        [...recentlyPlayedTracks, ...previousRecommendations]
-      );
-      
-      const backupSongsWithYoutube = await Promise.all(backupTracks.map(async track => {
-        let youtubeData = null;
-        try {
-          const youtubeResults = await searchYouTubeVideos(`${track.name} ${track.artists[0].name} official audio`);
-          if (youtubeResults && youtubeResults.length > 0) {
-            youtubeData = {
-              videoId: youtubeResults[0].id.videoId,
-              title: youtubeResults[0].snippet.title,
-              thumbnail: youtubeResults[0].snippet.thumbnails.high.url
-            };
-          }
-        } catch (error) {
-          console.warn(`YouTube search failed for backup track ${track.name}:`, error);
-        }
-        
-        return {
-          songName: track.name,
-          artistName: track.artists[0].name,
-          songId: track.id,
-          albumName: track.album.name,
-          albumId: track.album.id,
-          albumCover: track.album.images?.[0]?.url || null,
-          previewUrl: track.preview_url,
-          spotifyUrl: track.external_urls?.spotify || null,
-          youtubeData
-        };
-      }));
-      
-      verifiedSongs = [...verifiedSongs.filter(Boolean), ...backupSongsWithYoutube];
-    }
 
     let verifiedAlbums = await Promise.all(
       albums.map(async (item) => {
@@ -251,7 +213,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
         const { name: albumName, artist: artistName } = item;
         
         const result = await searchAlbums(`album:${albumName} artist:${artistName}`);
-        if (!isAlbumSearchResponse(result)) return null;
+        if (!result.albums || result.albums.items.length === 0) return null;
     
         let album = result.albums.items
           .filter(a => !previousRecommendations.includes(a.id))
@@ -426,3 +388,4 @@ export const getRecommendationHistory = async (req: Request, res: Response): Pro
     res.status(500).json({ error: "Failed to retrieve recommendation history" });
   }
 };
+

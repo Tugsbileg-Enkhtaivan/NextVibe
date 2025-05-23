@@ -1,3 +1,5 @@
+// Complete updated types for spotifyService.ts
+
 import express from 'express';
 import axios from 'axios';
 import qs from 'querystring';
@@ -17,6 +19,97 @@ const scope = [
   'playlist-modify-public',
 ].join(' ');
 
+type SpotifyTokenResponse = {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_token?: string;
+  scope: string;
+};
+
+type SpotifyPagingObject<T> = {
+  href: string;
+  limit: number;
+  next: string | null;
+  offset: number;
+  previous: string | null;
+  total: number;
+  items: T[];
+};
+
+type SpotifyArtist = {
+  id: string;
+  name: string;
+  href: string;
+  external_urls: { spotify: string };
+  uri: string;
+  type: 'artist';
+};
+
+type SpotifyImage = {
+  url: string;
+  height: number | null;
+  width: number | null;
+};
+
+type SpotifyAlbumSimplified = {
+  id: string;
+  name: string;
+  artists: SpotifyArtist[];
+  images: SpotifyImage[];
+  release_date: string;
+  release_date_precision: 'year' | 'month' | 'day';
+  total_tracks: number;
+  external_urls: { spotify: string };
+  href: string;
+  uri: string;
+  type: 'album';
+  album_type: 'album' | 'single' | 'compilation';
+  available_markets?: string[];
+};
+
+type SpotifyTrack = {
+  id: string;
+  name: string;
+  artists: SpotifyArtist[];
+  album: SpotifyAlbumSimplified;
+  duration_ms: number;
+  external_urls: { spotify: string };
+  preview_url: string | null;
+  popularity: number;
+  href: string;
+  uri: string;
+  type: 'track';
+  track_number: number;
+  disc_number: number;
+  explicit: boolean;
+  is_local: boolean;
+  available_markets?: string[];
+};
+
+// This is the complete Spotify Web API search response structure
+type SpotifySearchResponse = {
+  tracks?: SpotifyPagingObject<SpotifyTrack>;
+  albums?: SpotifyPagingObject<SpotifyAlbumSimplified>;
+  artists?: SpotifyPagingObject<SpotifyArtist>;
+  playlists?: SpotifyPagingObject<any>;
+};
+
+type SpotifyRecentlyPlayedItem = {
+  track: SpotifyTrack;
+  played_at: string;
+};
+
+type SpotifyRecentlyPlayedResponse = {
+  items: SpotifyRecentlyPlayedItem[];
+  next: string | null;
+  cursors: {
+    after: string;
+    before: string;
+  };
+};
+
+// Router handlers remain the same...
 router.get('/login', requireClerkAuth, (req, res) => {
   const params = qs.stringify({
     response_type: 'code',
@@ -38,7 +131,8 @@ router.get('/callback', requireClerkAuth, async (req, res) => {
   }
 
   try {
-    const response = await axios.post('https://accounts.spotify.com/api/token',
+    const response = await axios.post<SpotifyTokenResponse>(
+      'https://accounts.spotify.com/api/token',
       qs.stringify({
         grant_type: 'authorization_code',
         code,
@@ -50,21 +144,26 @@ router.get('/callback', requireClerkAuth, async (req, res) => {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-      });
+      }
+    );
 
     const { access_token, refresh_token, expires_in } = response.data;
     const expires_at = new Date(Date.now() + expires_in * 1000);
 
-    // Get user profile from Spotify to get the spotifyId
-    const profileResponse = await axios.get('https://api.spotify.com/v1/me', {
+    const profileResponse = await axios.get<{
+      id: string;
+      display_name: string;
+      email: string;
+      country: string;
+    }>('https://api.spotify.com/v1/me', {
       headers: {
         Authorization: `Bearer ${access_token}`,
       },
     });
-
+    
     const { id: spotifyId, display_name, email, country } = profileResponse.data;
+    
 
-    // Check if account exists first
     const existingAccount = await prisma.spotifyAccount.findUnique({
       where: { userId }
     });
@@ -120,7 +219,8 @@ router.get('/token', requireClerkAuth, async (req, res) => {
       return;
     }
 
-    const refreshRes = await axios.post('https://accounts.spotify.com/api/token',
+    const refreshRes = await axios.post<SpotifyTokenResponse>(
+      'https://accounts.spotify.com/api/token',
       qs.stringify({
         grant_type: 'refresh_token',
         refresh_token: account.refreshToken,
@@ -131,7 +231,8 @@ router.get('/token', requireClerkAuth, async (req, res) => {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-      });
+      }
+    );
 
     const { access_token, expires_in } = refreshRes.data;
     const newExpiresAt = new Date(Date.now() + expires_in * 1000);
@@ -154,7 +255,7 @@ export const authenticateSpotify = async (): Promise<string> => {
   }
 
   try {
-    const response = await axios.post(
+    const response = await axios.post<SpotifyTokenResponse>(
       'https://accounts.spotify.com/api/token',
       qs.stringify({
         grant_type: 'client_credentials',
@@ -171,7 +272,7 @@ export const authenticateSpotify = async (): Promise<string> => {
 
     const { access_token, expires_in } = response.data;
     appAccessToken = access_token;
-    appTokenExpiry = Date.now() + (expires_in - 60) * 1000; 
+    appTokenExpiry = Date.now() + (expires_in - 60) * 1000;
 
     return access_token;
   } catch (error: any) {
@@ -180,70 +281,12 @@ export const authenticateSpotify = async (): Promise<string> => {
   }
 };
 
-export const getUserSpotifyToken = async (userId: string): Promise<string | null> => {
+// Updated search functions with proper return types
+export const searchTracks = async (query: string, limit: number = 20): Promise<SpotifySearchResponse> => {
   try {
-    const account = await prisma.spotifyAccount.findUnique({ 
-      where: { userId } 
-    });
-
-    if (!account) {
-      return null;
-    }
-
-    if (Date.now() < account.expiresAt.getTime()) {
-      return account.accessToken;
-    }
-
-    if (account.refreshToken) {
-      try {
-        const refreshResponse = await axios.post(
-          'https://accounts.spotify.com/api/token',
-          qs.stringify({
-            grant_type: 'refresh_token',
-            refresh_token: account.refreshToken,
-            client_id: process.env.SPOTIFY_CLIENT_ID,
-            client_secret: process.env.SPOTIFY_CLIENT_SECRET,
-          }),
-          {
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-          }
-        );
-
-        const { access_token, expires_in } = refreshResponse.data;
-        const newExpiresAt = new Date(Date.now() + expires_in * 1000);
-
-        await prisma.spotifyAccount.update({
-          where: { userId },
-          data: { 
-            accessToken: access_token, 
-            expiresAt: newExpiresAt 
-          },
-        });
-
-        return access_token;
-      } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError);
-        return null;
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.error('Error getting user Spotify token:', error);
-    return null;
-  }
-};
-
-export const searchTracks = async (
-  query: string, 
-  limit: number = 50
-): Promise<SpotifyApi.SearchResponse> => {
-  const token = await authenticateSpotify();
-  
-  try {
-    const response = await axios.get('https://api.spotify.com/v1/search', {
+    const token = await authenticateSpotify();
+    
+    const response = await axios.get<SpotifySearchResponse>('https://api.spotify.com/v1/search', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -251,25 +294,21 @@ export const searchTracks = async (
         q: query,
         type: 'track',
         limit,
-        market: 'US', 
       },
     });
 
     return response.data;
   } catch (error: any) {
-    console.error('Spotify track search error:', error.response?.data || error.message);
-    throw new Error(`Failed to search tracks: ${error.message}`);
+    console.error('Error searching tracks:', error.response?.data || error.message);
+    throw new Error('Failed to search tracks');
   }
 };
 
-export const searchAlbums = async (
-  query: string, 
-  limit: number = 50
-): Promise<SpotifyApi.SearchResponse> => {
-  const token = await authenticateSpotify();
-  
+export const searchAlbums = async (query: string, limit: number = 20): Promise<SpotifySearchResponse> => {
   try {
-    const response = await axios.get('https://api.spotify.com/v1/search', {
+    const token = await authenticateSpotify();
+    
+    const response = await axios.get<SpotifySearchResponse>('https://api.spotify.com/v1/search', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -277,122 +316,71 @@ export const searchAlbums = async (
         q: query,
         type: 'album',
         limit,
-        market: 'US', 
       },
     });
 
     return response.data;
   } catch (error: any) {
-    console.error('Spotify album search error:', error.response?.data || error.message);
-    throw new Error(`Failed to search albums: ${error.message}`);
+    console.error('Error searching albums:', error.response?.data || error.message);
+    throw new Error('Failed to search albums');
   }
 };
 
-export const getUserRecentlyPlayed = async (
-  userId: string,
-  limit: number = 50
-): Promise<SpotifyApi.PlayHistoryObject[]> => {
-  const userToken = await getUserSpotifyToken(userId);
-  
-  if (!userToken) {
-    throw new Error('User Spotify token not available');
-  }
-
+export const getUserRecentlyPlayed = async (userId: string, limit: number = 20): Promise<SpotifyRecentlyPlayedItem[]> => {
   try {
-    const response = await axios.get('https://api.spotify.com/v1/me/player/recently-played', {
+    const account = await prisma.spotifyAccount.findUnique({ where: { userId } });
+
+    if (!account) {
+      throw new Error('Spotify account not connected');
+    }
+
+    let accessToken = account.accessToken;
+
+    // Check if token needs refresh
+    if (Date.now() >= account.expiresAt.getTime()) {
+      const refreshRes = await axios.post<SpotifyTokenResponse>(
+        'https://accounts.spotify.com/api/token',
+        qs.stringify({
+          grant_type: 'refresh_token',
+          refresh_token: account.refreshToken,
+          client_id: process.env.SPOTIFY_CLIENT_ID,
+          client_secret: process.env.SPOTIFY_CLIENT_SECRET,
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      const { access_token, expires_in } = refreshRes.data;
+      const newExpiresAt = new Date(Date.now() + expires_in * 1000);
+
+      await prisma.spotifyAccount.update({
+        where: { userId },
+        data: { accessToken: access_token, expiresAt: newExpiresAt },
+      });
+
+      accessToken = access_token;
+    }
+
+    const response = await axios.get<SpotifyRecentlyPlayedResponse>('https://api.spotify.com/v1/me/player/recently-played', {
       headers: {
-        Authorization: `Bearer ${userToken}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       params: {
         limit,
       },
     });
 
-    return response.data.items || [];
+    return response.data.items;
   } catch (error: any) {
-    console.error('Spotify recently played error:', error.response?.data || error.message);
-    throw new Error(`Failed to get recently played tracks: ${error.message}`);
+    console.error('Error getting recently played:', error.response?.data || error.message);
+    throw new Error('Failed to get recently played tracks');
   }
 };
 
-export const getTrackById = async (trackId: string): Promise<SpotifyApi.TrackObjectFull | null> => {
-  const token = await authenticateSpotify();
-  
-  try {
-    const response = await axios.get(`https://api.spotify.com/v1/tracks/${trackId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      params: {
-        market: 'US',
-      },
-    });
-
-    return response.data;
-  } catch (error: any) {
-    console.error('Spotify get track error:', error.response?.data || error.message);
-    return null;
-  }
-};
-
-
-export const getAlbumById = async (albumId: string): Promise<SpotifyApi.AlbumObjectFull | null> => {
-  const token = await authenticateSpotify();
-  
-  try {
-    const response = await axios.get(`https://api.spotify.com/v1/albums/${albumId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      params: {
-        market: 'US',
-      },
-    });
-
-    return response.data;
-  } catch (error: any) {
-    console.error('Spotify get album error:', error.response?.data || error.message);
-    return null;
-  }
-};
-
-export const getSpotifyRecommendations = async (
-  seedTracks?: string[],
-  seedArtists?: string[],
-  seedGenres?: string[],
-  targetAttributes?: {
-    target_valence?: number;
-    target_energy?: number;
-    target_danceability?: number;
-    target_acousticness?: number;
-  },
-  limit: number = 20
-): Promise<SpotifyApi.RecommendationsObject | null> => {
-  const token = await authenticateSpotify();
-  
-  try {
-    const params: any = { limit };
-    
-    if (seedTracks?.length) params.seed_tracks = seedTracks.slice(0, 5).join(',');
-    if (seedArtists?.length) params.seed_artists = seedArtists.slice(0, 5).join(',');
-    if (seedGenres?.length) params.seed_genres = seedGenres.slice(0, 5).join(',');
-    
-    if (targetAttributes) {
-      Object.assign(params, targetAttributes);
-    }
-
-    const response = await axios.get('https://api.spotify.com/v1/recommendations', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      params,
-    });
-
-    return response.data;
-  } catch (error: any) {
-    console.error('Spotify recommendations error:', error.response?.data || error.message);
-    return null;
-  }
-};
+// Export types for use in other files
+export type { SpotifySearchResponse, SpotifyTrack, SpotifyAlbumSimplified as SpotifyAlbum };
 
 export default router;

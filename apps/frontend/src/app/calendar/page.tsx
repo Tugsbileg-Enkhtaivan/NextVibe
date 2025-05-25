@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 
-type Mood = 'happy' | 'sad' | 'energetic' | 'calm' | 'angry' | 'romantic' | 'focused' | 'chill' | 'melancholic' | 'neutral' | 'very_happy' | 'devil' | 'bored';
+type Mood = 'happy' | 'sad' | 'energetic' | 'calm' | 'angry' | 'romantic' | 'focused' | 'chill' | 'melancholic' | 'very_happy' | 'devil' | 'bored';
 
 interface MoodData {
     date: string; // ISO format, e.g. "2022-05-20"
@@ -20,9 +20,8 @@ const moodFaces: Record<Mood, string> = {
     calm: '/assets/calm.png',
     romantic: '/assets/romantic.png',
     focused: '/assets/focused.png',
-    chill: '',
     sad: '/assets/sad.png',
-    neutral: '',
+    chill: 'apps/frontend/public/assets/neutral.png',
     devil: '/assets/devil.png',
     bored: '/assets/bored.png'
 };

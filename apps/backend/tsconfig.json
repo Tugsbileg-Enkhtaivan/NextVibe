@@ -6,8 +6,10 @@
     "moduleResolution": "node",
     "sourceMap": true,
     "outDir": "dist",
+    "rootDir": "./src",
+    "strict": true ,
+    "types": ["jest", "node"]
   },
   "lib": ["es2015"] ,
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src", "**/__tests__/**/*"]
 }

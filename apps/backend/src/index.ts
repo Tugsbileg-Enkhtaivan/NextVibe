@@ -75,11 +75,6 @@ app.use("/{*any}", (req: Request, res: Response) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-const originalUse = app.use;
-app.use = function (path: any, ...args: any[]) {
-  console.log("app.use called with path:", path);
-  return originalUse.call(this, path, ...args);
-};
 
 process.on('SIGINT', async () => {
   console.log('Shutting down gracefully...');

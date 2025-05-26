@@ -20,6 +20,53 @@ import {
 } from "../services/userService";
 import { MoodType, RecommendationType } from "@prisma/client";
 
+// Type definitions
+interface SpotifyImage {
+  url: string;
+  height: number;
+  width: number;
+}
+
+interface SpotifyAlbumFull {
+  id: string;
+  name: string;
+  artists: Array<{ name: string; id: string }>;
+  images: SpotifyImage[];
+  release_date: string;
+  external_urls: { spotify: string };
+  total_tracks: number;
+}
+
+interface SpotifyAlbumSimplified {
+  id: string;
+  name: string;
+  artists: Array<{ name: string; id: string }>;
+  external_urls: { spotify: string };
+}
+
+interface SpotifyTrack {
+  id: string;
+  name: string;
+  artists: Array<{ name: string; id: string }>;
+  album: {
+    id: string;
+    name: string;
+    images: SpotifyImage[];
+  };
+  preview_url: string | null;
+  external_urls: { spotify: string };
+}
+
+// Type guards
+function isFullAlbum(album: any): album is SpotifyAlbumFull {
+  return album && 'images' in album && 'release_date' in album;
+}
+
+function hasImages(obj: any): obj is { images: SpotifyImage[] } {
+  return obj && Array.isArray(obj.images);
+}
+
+// Cache and constants
 const userRecommendationCache = new Map<
   string,
   {
@@ -172,6 +219,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       return [];
     };
 
+    // Process songs
     let verifiedSongs = await Promise.all(
       songs.map(async (item) => {
         if (!item) return null;
@@ -231,16 +279,17 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       })
     );
 
+    // Process albums
     let verifiedAlbums = await Promise.all(
       albums.map(async (item) => {
         if (!item) return null;
         const { name: albumName, artist: artistName } = item;
-
+    
         const result = await searchAlbums(
           `album:${albumName} artist:${artistName}`
         );
         if (!result.albums || result.albums.items.length === 0) return null;
-
+    
         let album = result.albums.items
           .filter((a) => !previousRecommendations.includes(a.id))
           .find(
@@ -249,49 +298,76 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
                 artist.name.toLowerCase().includes(artistName.toLowerCase())
               ) && a.name.toLowerCase().includes(albumName.toLowerCase())
           );
-
+    
         if (!album && result.albums.items.length > 0) {
           album = result.albums.items[0];
         }
-
+    
         if (!album) return null;
-
+    
+        // Safe property access with type checking
+        const albumCover = hasImages(album) && album.images.length > 0 
+          ? album.images[0].url 
+          : null;
+        
+        const releaseDate = isFullAlbum(album) 
+          ? album.release_date 
+          : null;
+    
         return {
           albumName: album.name,
           artistName: album.artists[0].name,
           albumId: album.id,
-          albumCover: album.images?.[0]?.url || null,
+          albumCover,
           spotifyUrl: album.external_urls?.spotify || null,
-          releaseDate: album.release_date || null,
+          releaseDate,
         };
       })
     );
 
-    if (verifiedAlbums.filter(Boolean).length < 5) {
+    // Filter out null values and handle backup suggestions
+    const validVerifiedAlbums = verifiedAlbums.filter((album): album is NonNullable<typeof album> => album !== null);
+
+    let finalAlbums;
+    
+    if (validVerifiedAlbums.length < 5) {
       const backupAlbums = await getBackupSuggestions(
         "albums",
         `${genre} ${mood}`,
-        5 - verifiedAlbums.filter(Boolean).length,
+        5 - validVerifiedAlbums.length,
         previousRecommendations
       );
-
-      const processedBackupAlbums = backupAlbums.map((album) => ({
-        albumName: album.name,
-        artistName: album.artists[0].name,
-        albumId: album.id,
-        albumCover: album.images?.[0]?.url || null,
-        spotifyUrl: album.external_urls?.spotify || null,
-        releaseDate: album.release_date || null,
-      }));
-
-      verifiedAlbums = [
-        ...verifiedAlbums.filter(Boolean),
+    
+      const processedBackupAlbums = backupAlbums.map((album) => {
+        const albumCover = hasImages(album) && album.images.length > 0 
+          ? album.images[0].url 
+          : null;
+        
+        const releaseDate = isFullAlbum(album) 
+          ? album.release_date 
+          : null;
+      
+        return {
+          albumName: album.name,
+          artistName: album.artists[0].name,
+          albumId: album.id,
+          albumCover,
+          spotifyUrl: album.external_urls?.spotify || null,
+          releaseDate,
+        };
+      });
+    
+      finalAlbums = [
+        ...validVerifiedAlbums,
         ...processedBackupAlbums,
-      ];
+      ].slice(0, 5);
+    } else {
+      finalAlbums = validVerifiedAlbums.slice(0, 5);
     }
+    
 
-    const finalSongs = verifiedSongs.slice(0, 5);
-    const finalAlbums = verifiedAlbums.slice(0, 5);
+    // Filter out null values from songs
+    const finalSongs = verifiedSongs.filter((song): song is NonNullable<typeof song> => song !== null).slice(0, 5);
 
     userRecommendationCache.set(cacheKey, {
       timestamp: Date.now(),

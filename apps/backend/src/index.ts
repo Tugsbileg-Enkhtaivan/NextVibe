@@ -1,7 +1,6 @@
 import dotenv from "dotenv";
 import express, { Request, Response ,NextFunction } from "express";
 import { PrismaClient } from "@prisma/client";
-import cors from "cors";
 import aiSongRouter from "./routes/aiSongRouter";
 import { requireClerkAuth } from "./middlewares/requireClerkAuth";
 import { clerkMiddleware } from "@clerk/express";
@@ -37,7 +36,6 @@ app.options("/{*any}", (req, res) => {
 
 app.use(clerkMiddleware());
 
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 app.use(express.json());
 
 app.use("/api/ai-song", aiSongRouter);
@@ -74,7 +72,6 @@ app.post("/users", async (req: Request, res: Response) => {
 app.use("/{*any}", (req: Request, res: Response) => {
   res.status(404).json({ error: "Route not found" });
 });
-
 
 const PORT = process.env.PORT || 8000;
 

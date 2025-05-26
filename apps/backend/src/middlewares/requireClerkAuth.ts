@@ -17,17 +17,28 @@ export const requireClerkAuth = (
   res: Response,
   next: NextFunction
 ): void => {
-  const { userId } = getAuth(req);
+  try {
+    const { userId } = getAuth(req);
 
-  if (!userId) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
+    if (!userId) {
+      res.status(401).json({ 
+        error: 'Unauthorized',
+        message: 'Valid authentication token is required'
+      });
+      return;
+    }
+
+    req.userId = userId;
+    req.user = { id: userId };
+    
+    next();
+  } catch (error) {
+    console.error('Authentication error:', error);
+    res.status(401).json({ 
+      error: 'Unauthorized',
+      message: 'Invalid authentication token'
+    });
   }
-
-  req.userId = userId;
-  req.user = { id: userId };
-  
-  next();
 };
 
 export const optionalClerkAuth = (
@@ -35,12 +46,52 @@ export const optionalClerkAuth = (
   res: Response,
   next: NextFunction
 ): void => {
-  const { userId } = getAuth(req);
+  try {
+    const { userId } = getAuth(req);
 
-  if (userId) {
-    req.userId = userId;
-    req.user = { id: userId };
+    if (userId) {
+      req.userId = userId;
+      req.user = { id: userId };
+    }
+    
+    next();
+  } catch (error) {
+    console.error('Optional auth error:', error);
+
+    next();
   }
-  
-  next();
+};
+
+export const requireRole = (allowedRoles: string[]) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { has } = getAuth(req);
+      
+      if (!req.userId) {
+        res.status(401).json({ 
+          error: 'Unauthorized',
+          message: 'Authentication required'
+        });
+        return;
+      }
+
+      const hasRequiredRole = allowedRoles.some(role => has && has({ role }));
+      
+      if (!hasRequiredRole) {
+        res.status(403).json({ 
+          error: 'Forbidden',
+          message: 'Insufficient permissions'
+        });
+        return;
+      }
+
+      next();
+    } catch (error) {
+      console.error('Role check error:', error);
+      res.status(500).json({ 
+        error: 'Internal Server Error',
+        message: 'Error checking permissions'
+      });
+    }
+  };
 };

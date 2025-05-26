@@ -1,29 +1,23 @@
-import express from 'express';
-import { 
-  getAISongSuggestions, 
-  addToFavorites, 
-  removeFromFavorites, 
+import { Router } from 'express';
+import {
+  getAISongSuggestions,
+  addToFavorites,
+  removeFromFavorites,
   getFavorites,
   getRecommendationHistory
 } from '../controllers/aiSongController';
+import { requireClerkAuth, optionalClerkAuth } from '../middlewares/requireClerkAuth';
+import validateQuery from '../middlewares/validateQuery';
 
+const aiSongRouter = Router();
 
-const aiSongRouter = express.Router();
+// Public endpoint - allows both authenticated and anonymous users
+aiSongRouter.get('/recommendations',validateQuery ,optionalClerkAuth, getAISongSuggestions);
 
-const validateQuery = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
-  const { mood, genre } = req.query;
-  if (!mood || !genre) {
-    res.status(400).json({ error: "Mood and genre parameters are required" });
-    return;
-  }
-  next();
-};
-
-aiSongRouter.get("/recommendations", validateQuery, getAISongSuggestions);
-
-aiSongRouter.post("/favorites", addToFavorites);
-aiSongRouter.delete("/favorites/:itemId", removeFromFavorites);
-aiSongRouter.get("/favorites", getFavorites);
-aiSongRouter.get("/history", getRecommendationHistory);
+// Protected endpoints - require authentication
+aiSongRouter.post('/favorites', requireClerkAuth, addToFavorites);
+aiSongRouter.delete('/favorites/:itemId', requireClerkAuth, removeFromFavorites);
+aiSongRouter.get('/favorites', requireClerkAuth, getFavorites);
+aiSongRouter.get('/history', requireClerkAuth, getRecommendationHistory);
 
 export default aiSongRouter;

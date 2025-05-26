@@ -22,17 +22,23 @@ const data: Record<string, string> = {
 }
 
 export default function CardCarousel() {
+
+    const handleMoodClick = (index) => {
+        console.log(index)
+    }
     return (
         <div className="w-full mx-auto">
             <Swiper
                 effect="cards"
+                loop={true}
                 grabCursor={true}
                 pagination={{ clickable: true }}
                 modules={[EffectCards, Pagination]}
                 className="w-[200px] h-[300px]"
             >
                 {Object.entries(data).map(([key, value], index) => (
-                    <SwiperSlide key={index} className="flex items-center justify-center w-[90%] relative">
+                    <SwiperSlide key={index}
+                        onClick={() => handleMoodClick(index)} className="flex items-center justify-center w-[90%] relative">
                         <h1 className="absolute top-5 left-1/2 -translate-1/2 text-white font-bold font-[sans-serif] text-2xl">{key[0].toUpperCase() + key.slice(1)}</h1>
                         <Image
                             src={data[key]}

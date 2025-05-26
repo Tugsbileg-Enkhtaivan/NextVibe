@@ -37,7 +37,7 @@ app.options("*", (req, res) => {
 
 app.use(express.json());
 
-app.use("/api", aiSongRouter);
+app.use("/api/:id", aiSongRouter);
 // app.use("/api/spotify", spotifyRouter);
 
 const isAuthenticated = async (

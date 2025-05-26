@@ -1,5 +1,3 @@
-// Complete updated types for spotifyService.ts
-
 import express from 'express';
 import axios from 'axios';
 import qs from 'querystring';
@@ -148,6 +146,13 @@ router.get('/callback', requireClerkAuth, async (req, res) => {
     );
 
     const { access_token, refresh_token, expires_in } = response.data;
+    
+    // Check if refresh_token is provided
+    if (!refresh_token) {
+      res.status(500).json({ error: 'No refresh token received from Spotify' });
+      return;
+    }
+
     const expires_at = new Date(Date.now() + expires_in * 1000);
 
     const profileResponse = await axios.get<{

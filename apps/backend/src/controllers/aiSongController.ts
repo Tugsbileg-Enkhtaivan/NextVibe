@@ -6,22 +6,28 @@ import {
   searchTracks,
   getUserRecentlyPlayed,
 } from "../services/spotifyService";
-import { isAlbumSearchResponse, isTrackSearchResponse } from "../utils/spotifyUtils";
+import {
+  isAlbumSearchResponse,
+  isTrackSearchResponse,
+} from "../utils/spotifyUtils";
 import { searchYouTubeVideos } from "../services/youtubeService";
-import { 
-  saveUserRecommendationHistory, 
+import {
+  saveUserRecommendationHistory,
   getUserRecommendationHistory,
   addToUserFavorites,
   getUserFavorites,
-  removeFromUserFavorites
+  removeFromUserFavorites,
 } from "../services/userService";
 import { MoodType, RecommendationType } from "@prisma/client";
 
-const userRecommendationCache = new Map<string, {
-  timestamp: number,
-  songs: any[],
-  albums: any[]
-}>();
+const userRecommendationCache = new Map<
+  string,
+  {
+    timestamp: number;
+    songs: any[];
+    albums: any[];
+  }
+>();
 
 const CACHE_EXPIRATION = 6 * 60 * 60 * 1000;
 
@@ -30,9 +36,12 @@ const convertToMoodType = (mood: string): MoodType => {
   return MoodType[moodUpper] || MoodType.HAPPY;
 };
 
-export const getAISongSuggestions = async (req: Request, res: Response): Promise<void> => {
+export const getAISongSuggestions = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { mood, genre } = req.query as { mood: string; genre: string };
-  const userId = req.user?.id || 'anonymous'; 
+  const userId = req.user?.id || "anonymous";
 
   if (!mood || !genre) {
     res.status(400).json({ error: "Mood and genre are required parameters" });
@@ -41,40 +50,41 @@ export const getAISongSuggestions = async (req: Request, res: Response): Promise
 
   try {
     await authenticateSpotify();
-    
+
     const cacheKey = `${userId}-${mood}-${genre}`;
     const cachedRecommendations = userRecommendationCache.get(cacheKey);
-    
-    const shouldUseCache = cachedRecommendations && 
-                          (Date.now() - cachedRecommendations.timestamp < CACHE_EXPIRATION) &&
-                          (Math.random() > 0.3); 
-    
+
+    const shouldUseCache =
+      cachedRecommendations &&
+      Date.now() - cachedRecommendations.timestamp < CACHE_EXPIRATION &&
+      Math.random() > 0.3;
+
     if (shouldUseCache) {
       res.json({
         songs: cachedRecommendations.songs,
         albums: cachedRecommendations.albums,
-        fromCache: true
+        fromCache: true,
       });
       return;
     }
-    
+
     let recentlyPlayedTracks: string[] = [];
     try {
-      if (userId !== 'anonymous') {
+      if (userId !== "anonymous") {
         const recentlyPlayed = await getUserRecentlyPlayed(userId);
-        recentlyPlayedTracks = recentlyPlayed.map(item => item.track.id);
+        recentlyPlayedTracks = recentlyPlayed.map((item) => item.track.id);
       }
     } catch (error) {
       console.warn("Failed to get recently played tracks:", error);
     }
-    
+
     let previousRecommendations: string[] = [];
     try {
-      if (userId !== 'anonymous') {
+      if (userId !== "anonymous") {
         const history = await getUserRecommendationHistory(userId);
-        previousRecommendations = history.flatMap(rec => [
-          ...(rec.tracks?.map(track => track.trackId) || []),
-          ...(rec.albums?.map(album => album.albumId) || [])
+        previousRecommendations = history.flatMap((rec) => [
+          ...(rec.tracks?.map((track) => track.trackId) || []),
+          ...(rec.albums?.map((album) => album.albumId) || []),
         ]);
       }
     } catch (error) {
@@ -123,7 +133,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       return text
         .trim()
         .split("\n")
-        .filter(line => line.trim() !== '')
+        .filter((line) => line.trim() !== "")
         .map((line) => {
           const match = line.match(/^\d+\.\s*(.+?)\s*-\s*(.+)$/);
           if (!match) return null;
@@ -138,19 +148,24 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
     const songs = parseList(songsSection[1]);
     const albums = parseList(albumsSection[1]);
 
-    const getBackupSuggestions = async (type: 'tracks' | 'albums', searchTerm: string, count: number, excludeIds: string[] = []) => {
-      if (type === 'tracks') {
+    const getBackupSuggestions = async (
+      type: "tracks" | "albums",
+      searchTerm: string,
+      count: number,
+      excludeIds: string[] = []
+    ) => {
+      if (type === "tracks") {
         const result = await searchTracks(`${genre} ${mood}`);
         if (result.tracks && result.tracks.items.length > 0) {
           return result.tracks.items
-            .filter(track => !excludeIds.includes(track.id))
+            .filter((track) => !excludeIds.includes(track.id))
             .slice(0, count);
         }
       } else {
         const result = await searchAlbums(`${genre} ${mood}`);
         if (result.albums && result.albums.items.length > 0) {
           return result.albums.items
-            .filter(album => !excludeIds.includes(album.id))
+            .filter((album) => !excludeIds.includes(album.id))
             .slice(0, count);
         }
       }
@@ -161,37 +176,47 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       songs.map(async (item) => {
         if (!item) return null;
         const { name: songName, artist: artistName } = item;
-        
-        const result = await searchTracks(`track:${songName} artist:${artistName}`);
+
+        const result = await searchTracks(
+          `track:${songName} artist:${artistName}`
+        );
         if (!result.tracks || result.tracks.items.length === 0) return null;
-    
+
         let track = result.tracks.items
-          .filter(t => !recentlyPlayedTracks.includes(t.id) && !previousRecommendations.includes(t.id))
-          .find(t =>
-            t.artists.some(a => a.name.toLowerCase().includes(artistName.toLowerCase())) &&
-            t.name.toLowerCase().includes(songName.toLowerCase())
+          .filter(
+            (t) =>
+              !recentlyPlayedTracks.includes(t.id) &&
+              !previousRecommendations.includes(t.id)
+          )
+          .find(
+            (t) =>
+              t.artists.some((a) =>
+                a.name.toLowerCase().includes(artistName.toLowerCase())
+              ) && t.name.toLowerCase().includes(songName.toLowerCase())
           );
-    
+
         if (!track && result.tracks.items.length > 0) {
           track = result.tracks.items[0];
         }
-        
+
         if (!track) return null;
-        
+
         let youtubeData = null;
         try {
-          const youtubeResults = await searchYouTubeVideos(`${track.name} ${track.artists[0].name} official audio`);
+          const youtubeResults = await searchYouTubeVideos(
+            `${track.name} ${track.artists[0].name} official audio`
+          );
           if (youtubeResults && youtubeResults.length > 0) {
             youtubeData = {
               videoId: youtubeResults[0].id.videoId,
               title: youtubeResults[0].snippet.title,
-              thumbnail: youtubeResults[0].snippet.thumbnails.high.url
+              thumbnail: youtubeResults[0].snippet.thumbnails.high.url,
             };
           }
         } catch (error) {
           console.warn(`YouTube search failed for ${track.name}:`, error);
         }
-    
+
         return {
           songName: track.name,
           artistName: track.artists[0].name,
@@ -201,33 +226,36 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
           albumCover: track.album.images?.[0]?.url || null,
           previewUrl: track.preview_url,
           spotifyUrl: track.external_urls?.spotify || null,
-          youtubeData
+          youtubeData,
         };
       })
     );
-    
 
     let verifiedAlbums = await Promise.all(
       albums.map(async (item) => {
         if (!item) return null;
         const { name: albumName, artist: artistName } = item;
-        
-        const result = await searchAlbums(`album:${albumName} artist:${artistName}`);
+
+        const result = await searchAlbums(
+          `album:${albumName} artist:${artistName}`
+        );
         if (!result.albums || result.albums.items.length === 0) return null;
-    
+
         let album = result.albums.items
-          .filter(a => !previousRecommendations.includes(a.id))
-          .find(a =>
-            a.artists.some(artist => artist.name.toLowerCase().includes(artistName.toLowerCase())) &&
-            a.name.toLowerCase().includes(albumName.toLowerCase())
+          .filter((a) => !previousRecommendations.includes(a.id))
+          .find(
+            (a) =>
+              a.artists.some((artist) =>
+                artist.name.toLowerCase().includes(artistName.toLowerCase())
+              ) && a.name.toLowerCase().includes(albumName.toLowerCase())
           );
-    
+
         if (!album && result.albums.items.length > 0) {
           album = result.albums.items[0];
         }
-        
+
         if (!album) return null;
-    
+
         return {
           albumName: album.name,
           artistName: album.artists[0].name,
@@ -238,16 +266,16 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
         };
       })
     );
-    
+
     if (verifiedAlbums.filter(Boolean).length < 5) {
       const backupAlbums = await getBackupSuggestions(
-        'albums', 
-        `${genre} ${mood}`, 
+        "albums",
+        `${genre} ${mood}`,
         5 - verifiedAlbums.filter(Boolean).length,
         previousRecommendations
       );
-      
-      const processedBackupAlbums = backupAlbums.map(album => ({
+
+      const processedBackupAlbums = backupAlbums.map((album) => ({
         albumName: album.name,
         artistName: album.artists[0].name,
         albumId: album.id,
@@ -255,20 +283,23 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
         spotifyUrl: album.external_urls?.spotify || null,
         releaseDate: album.release_date || null,
       }));
-      
-      verifiedAlbums = [...verifiedAlbums.filter(Boolean), ...processedBackupAlbums];
+
+      verifiedAlbums = [
+        ...verifiedAlbums.filter(Boolean),
+        ...processedBackupAlbums,
+      ];
     }
-    
+
     const finalSongs = verifiedSongs.slice(0, 5);
     const finalAlbums = verifiedAlbums.slice(0, 5);
-    
+
     userRecommendationCache.set(cacheKey, {
       timestamp: Date.now(),
       songs: finalSongs,
-      albums: finalAlbums
+      albums: finalAlbums,
     });
-    
-    if (userId !== 'anonymous') {
+
+    if (userId !== "anonymous") {
       try {
         await saveUserRecommendationHistory(userId, {
           type: RecommendationType.MOOD_BASED,
@@ -286,7 +317,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
             imageUrl: song.albumCover,
             previewUrl: song.previewUrl,
             duration: null,
-            popularity: null
+            popularity: null,
           })),
           albums: finalAlbums.map((album, index) => ({
             albumId: album.albumId,
@@ -295,8 +326,8 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
             artistNames: [album.artistName],
             imageUrl: album.albumCover,
             releaseDate: album.releaseDate,
-            totalTracks: null
-          }))
+            totalTracks: null,
+          })),
         });
       } catch (error) {
         console.warn("Failed to save recommendation history:", error);
@@ -306,7 +337,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
     res.json({
       songs: finalSongs,
       albums: finalAlbums,
-      fromCache: false
+      fromCache: false,
     });
   } catch (err: any) {
     console.error("[AI SONG SEARCH ERROR]", err.message || err);
@@ -314,20 +345,27 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
   }
 };
 
-export const addToFavorites = async (req: Request, res: Response): Promise<void> => {
+export const addToFavorites = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const userId = req.user?.id;
   const { itemId, itemType } = req.body;
-  
+
   if (!userId) {
     res.status(401).json({ error: "Authentication required" });
     return;
   }
-  
-  if (!itemId || !itemType || !['song', 'album'].includes(itemType)) {
-    res.status(400).json({ error: "Invalid request. Required: itemId and itemType (song or album)" });
+
+  if (!itemId || !itemType || !["song", "album"].includes(itemType)) {
+    res
+      .status(400)
+      .json({
+        error: "Invalid request. Required: itemId and itemType (song or album)",
+      });
     return;
   }
-  
+
   try {
     await addToUserFavorites(userId, itemId, itemType);
     res.json({ success: true });
@@ -337,15 +375,18 @@ export const addToFavorites = async (req: Request, res: Response): Promise<void>
   }
 };
 
-export const removeFromFavorites = async (req: Request, res: Response): Promise<void> => {
+export const removeFromFavorites = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const userId = req.user?.id;
   const { itemId } = req.params;
-  
+
   if (!userId) {
     res.status(401).json({ error: "Authentication required" });
     return;
   }
-  
+
   try {
     await removeFromUserFavorites(userId, itemId);
     res.json({ success: true });
@@ -355,14 +396,17 @@ export const removeFromFavorites = async (req: Request, res: Response): Promise<
   }
 };
 
-export const getFavorites = async (req: Request, res: Response): Promise<void> => {
+export const getFavorites = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const userId = req.user?.id;
-  
+
   if (!userId) {
     res.status(401).json({ error: "Authentication required" });
     return;
   }
-  
+
   try {
     const favorites = await getUserFavorites(userId);
     res.json(favorites);
@@ -372,20 +416,24 @@ export const getFavorites = async (req: Request, res: Response): Promise<void> =
   }
 };
 
-export const getRecommendationHistory = async (req: Request, res: Response): Promise<void> => {
+export const getRecommendationHistory = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const userId = req.user?.id;
-  
+
   if (!userId) {
     res.status(401).json({ error: "Authentication required" });
     return;
   }
-  
+
   try {
     const history = await getUserRecommendationHistory(userId);
     res.json(history);
   } catch (error) {
     console.error("[GET HISTORY ERROR]", error);
-    res.status(500).json({ error: "Failed to retrieve recommendation history" });
+    res
+      .status(500)
+      .json({ error: "Failed to retrieve recommendation history" });
   }
 };
-

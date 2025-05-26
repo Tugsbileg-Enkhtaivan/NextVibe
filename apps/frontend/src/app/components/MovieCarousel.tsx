@@ -7,12 +7,14 @@ import 'swiper/css/effect-coverflow';
 import 'swiper/css/pagination';
 
 const images = [
-    '/assets/bored.png',
-    '/assets/angry.png',
-    '/assets/sad.png',
-    '/assets/happy.png',
-    '/assets/devil.png',
-];
+    '/assets/images.jpeg',
+   '/assets/images.jpeg',
+   '/assets/images.jpeg',
+   '/assets/images.jpeg',
+   '/assets/images.jpeg',
+   '/assets/images.jpeg',
+
+  ];
 
 export default function MovieCarousel() {
   return (
@@ -31,10 +33,10 @@ export default function MovieCarousel() {
         }}
         pagination={{ clickable: true }}
         modules={[EffectCoverflow, Pagination]}
-        className="w-full max-w-5xl"
+        className="w-full max-w-6xl"
       >
         {images.map((src, i) => (
-          <SwiperSlide key={i} className="w-[100px]">
+          <SwiperSlide key={i} className="w-10">
             <img
               src={src}
               alt={`Slide ${i}`}

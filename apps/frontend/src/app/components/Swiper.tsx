@@ -8,11 +8,12 @@ import 'swiper/css/pagination';
 import 'swiper/css/navigation';
 
 const slides = [
-  '/assets/bored.png',
-  '/assets/angry.png',
-  '/assets/sad.png',
-  '/assets/happy.png',
-  '/assets/devil.png',
+  '/assets/treee.jpg',
+  '/assets/treee.jpg',
+  '/assets/treee.jpg',
+  '/assets/treee.jpg',
+  '/assets/treee.jpg',
+  '/assets/treee.jpg',
 ];
 
 export default function CoverflowSwiper() {
@@ -36,7 +37,7 @@ export default function CoverflowSwiper() {
         className="w-full h-[500px]"
       >
         {slides.map((src, index) => (
-          <SwiperSlide key={index} className="w-[300px] h-[400px]">
+          <SwiperSlide key={index} className="w-[200px] h-[400px]">
             <img
               src={src}
               alt={`Slide ${index}`}

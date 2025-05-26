@@ -1,9 +1,9 @@
-import CustomCarousel from "../components/Carousel"
+// import CustomCarousel from "../components/Carousel"
 
-const Carousel = () => {
-    return(
-        <CustomCarousel />
-    )
-}
+// const Carousel = () => {
+//     return(
+//         <CustomCarousel />
+//     )
+// }
 
-export default Carousel
+// export default Carousel

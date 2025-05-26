@@ -20,9 +20,9 @@ const moodFaces: Record<Mood, string> = {
     calm: '/assets/calm.png',
     romantic: '/assets/romantic.png',
     focused: '/assets/focused.png',
-    chill: '',
+    chill: '/assets/chill.png',
     sad: '/assets/sad.png',
-    neutral: '',
+    neutral: '/assets/neutral.png',
     devil: '/assets/devil.png',
     bored: '/assets/bored.png'
 };

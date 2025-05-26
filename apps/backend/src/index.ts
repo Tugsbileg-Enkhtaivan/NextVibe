@@ -76,10 +76,19 @@ app.use("/{*any}", (req: Request, res: Response) => {
 });
 
 
+const PORT = process.env.PORT || 8000;
+
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
 process.on('SIGINT', async () => {
   console.log('Shutting down gracefully...');
   await prisma.$disconnect();
-  process.exit(0);
+  server.close(() => {
+    process.exit(0);
+  });
 });
 
 export {app , prisma};

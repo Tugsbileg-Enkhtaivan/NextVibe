@@ -14,7 +14,7 @@ const prisma = new PrismaClient();
 app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 app.use(express.json());
 
-app.use("/api", aiSongRouter);
+app.use("/api/:id", aiSongRouter);
 // app.use("/api/spotify", spotifyRouter);
 
 const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {

@@ -46,7 +46,6 @@ class SpotifyAuthService {
     ];
   }
 
-  // Generate authorization URL
   getAuthUrl(state?: string): string {
     const params = new URLSearchParams({
       response_type: 'code',
@@ -59,7 +58,6 @@ class SpotifyAuthService {
     return `https://accounts.spotify.com/authorize?${params.toString()}`;
   }
 
-  // Exchange authorization code for access token
   async exchangeCodeForToken(code: string): Promise<{
     accessToken: string;
     refreshToken?: string;
@@ -67,7 +65,6 @@ class SpotifyAuthService {
     user: SpotifyUser;
   }> {
     try {
-      // Get access token
       const tokenResponse = await axios.post<SpotifyTokenResponse>(
         'https://accounts.spotify.com/api/token',
         new URLSearchParams({
@@ -87,7 +84,6 @@ class SpotifyAuthService {
 
       const { access_token, refresh_token, expires_in } = tokenResponse.data;
 
-      // Get user profile
       const userResponse = await axios.get<SpotifyUser>(
         'https://api.spotify.com/v1/me',
         {
@@ -100,7 +96,6 @@ class SpotifyAuthService {
       const user = userResponse.data;
       const expiresAt = Date.now() + (expires_in * 1000);
 
-      // Store in memory
       this.tokenStorage.set(user.id, {
         accessToken: access_token,
         refreshToken: refresh_token,
@@ -120,7 +115,6 @@ class SpotifyAuthService {
     }
   }
 
-  // Refresh access token
   async refreshAccessToken(userId: string): Promise<string | null> {
     const stored = this.tokenStorage.get(userId);
     if (!stored?.refreshToken) {
@@ -146,7 +140,6 @@ class SpotifyAuthService {
 
       const { access_token, expires_in, refresh_token } = response.data;
       
-      // Update stored token
       this.tokenStorage.set(userId, {
         ...stored,
         accessToken: access_token,
@@ -157,46 +150,38 @@ class SpotifyAuthService {
       return access_token;
     } catch (error: any) {
       console.error('Error refreshing token:', error.response?.data || error.message);
-      // Remove invalid token
       this.tokenStorage.delete(userId);
       return null;
     }
   }
 
-  // Get valid access token (refresh if needed)
   async getValidAccessToken(userId: string): Promise<string | null> {
     const stored = this.tokenStorage.get(userId);
     if (!stored) {
       return null;
     }
 
-    // Check if token is still valid (with 5 minute buffer)
     if (stored.expiresAt > Date.now() + (5 * 60 * 1000)) {
       return stored.accessToken;
     }
 
-    // Try to refresh
     return await this.refreshAccessToken(userId);
   }
 
-  // Get user info
   getUserInfo(userId: string): SpotifyUser | null {
     const stored = this.tokenStorage.get(userId);
     return stored?.user || null;
   }
 
-  // Check if user is authenticated
   isAuthenticated(userId: string): boolean {
     const stored = this.tokenStorage.get(userId);
     return stored !== undefined && stored.expiresAt > Date.now();
   }
 
-  // Logout user
   logout(userId: string): void {
     this.tokenStorage.delete(userId);
   }
 
-  // Get all stored user IDs (for debugging)
   getStoredUserIds(): string[] {
     return Array.from(this.tokenStorage.keys());
   }

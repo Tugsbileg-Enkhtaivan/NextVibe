@@ -22,24 +22,20 @@ export const saveUserRecommendationHistory = async (
   recommendation: RecommendationData
 ) => {
   try {
-    // First check if user exists, if not create one
     const existingUser = await prisma.user.findUnique({
       where: { id: userId }
     });
 
     if (!existingUser) {
-      // Create user if doesn't exist
       try {
         await prisma.user.create({
           data: {
             id: userId,
-            email: `${userId}@temp.com`, // Temporary email
-            username: `user_${userId.substring(0, 8)}`, // Generate username from userId
-            // Add other required fields based on your User model
+            email: `${userId}@temp.com`, 
+            username: `user_${userId.substring(0, 8)}`, 
           }
         });
       } catch (createError: any) {
-        // If user creation fails due to duplicate, continue (race condition)
         if (createError.code !== 'P2002') {
           throw createError;
         }
@@ -93,7 +89,6 @@ export const saveUserRecommendationHistory = async (
     });
   } catch (error: any) {
     console.error('Error saving recommendation history:', error);
-    // Don't throw error if it's just a foreign key constraint issue
     if (error.code === 'P2003') {
       console.warn('User not found in database, skipping recommendation history save');
       return null;
@@ -107,7 +102,6 @@ export const getUserRecommendationHistory = async (
   limit: number = 10
 ) => {
   try {
-    // Check if user exists first
     const existingUser = await prisma.user.findUnique({
       where: { id: userId }
     });
@@ -132,7 +126,6 @@ export const getUserRecommendationHistory = async (
     });
   } catch (error) {
     console.error('Error retrieving recommendation history:', error);
-    // Return empty array instead of throwing error
     return [];
   }
 };
@@ -143,7 +136,6 @@ export const addToUserFavorites = async (
   itemType: 'track' | 'album' | 'artist' | 'playlist'
 ) => {
   try {
-    // First check if user exists, if not create one
     const existingUser = await prisma.user.findUnique({
       where: { id: userId }
     });
@@ -153,20 +145,17 @@ export const addToUserFavorites = async (
         await prisma.user.create({
           data: {
             id: userId,
-            email: `${userId}@temp.com`, // Temporary email
-            username: `user_${userId.substring(0, 8)}`, // Generate username from userId
-            // Add other required fields based on your User model
+            email: `${userId}@temp.com`, 
+            username: `user_${userId.substring(0, 8)}`, 
           }
         });
       } catch (createError: any) {
-        // If user creation fails due to duplicate, continue (race condition)
         if (createError.code !== 'P2002') {
           throw createError;
         }
       }
     }
 
-    // Convert itemType to match Prisma enum
     const favoriteType: FavoriteType = itemType.toUpperCase() as FavoriteType;
     
     const existing = await prisma.favorite.findFirst({

@@ -8,6 +8,7 @@ import "swiper/css/effect-cards";
 import "swiper/css/pagination";
 
 import Image from "next/image";
+import FlipSwiper from "../components/FlipSwiper";
 
 const data: Record<string, string> = {
     anger: "/assets/anger.webp",
@@ -17,17 +18,17 @@ const data: Record<string, string> = {
     sadness: "/assets/sadness.webp",
     ennui: "/assets/ennui.webp",
     disgust: "/assets/disgust.webp",
-    embarrassment: "/assets/embarrassment.webp",
+    shame: "/assets/embarrassment.webp",
     anxiety: "/assets/anxiety.webp",
 }
 
 export default function CardCarousel() {
 
-    const handleMoodClick = (index) => {
+    const handleMoodClick = (index: number) => {
         console.log(index)
     }
     return (
-        <div className="w-full mx-auto">
+        <div className="w-full min-h-screen mx-auto space-y-6 bg-black py-6">
             <Swiper
                 effect="cards"
                 loop={true}
@@ -39,7 +40,7 @@ export default function CardCarousel() {
                 {Object.entries(data).map(([key, value], index) => (
                     <SwiperSlide key={index}
                         onClick={() => handleMoodClick(index)} className="flex items-center justify-center w-[90%] relative">
-                        <h1 className="absolute top-5 left-1/2 -translate-1/2 text-white font-bold font-[sans-serif] text-2xl">{key[0].toUpperCase() + key.slice(1)}</h1>
+                        <h1 className="absolute top-7 left-1/2 -translate-1/2 text-white font-bold text-3xl">{key[0].toUpperCase() + key.slice(1).toUpperCase()}</h1>
                         <Image
                             src={data[key]}
                             alt={`Slide ${index + 1}`}
@@ -50,6 +51,8 @@ export default function CardCarousel() {
                     </SwiperSlide>
                 ))}
             </Swiper>
+
+            <FlipSwiper />
         </div>
     );
 }

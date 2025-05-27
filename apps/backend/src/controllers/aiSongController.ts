@@ -116,26 +116,30 @@ export const getAISongSuggestions = async (
     }
 
     let recentlyPlayedTracks: string[] = [];
-    try {
-      if (userId !== "anonymous") {
+    // Only try to get recently played if user is authenticated and not anonymous
+    if (userId !== "anonymous") {
+      try {
         const recentlyPlayed = await getUserRecentlyPlayed(userId);
         recentlyPlayedTracks = recentlyPlayed.map((item) => item.track.id);
+      } catch (error) {
+        console.warn("Failed to get recently played tracks:", error);
+        // Continue without recently played tracks
       }
-    } catch (error) {
-      console.warn("Failed to get recently played tracks:", error);
     }
 
     let previousRecommendations: string[] = [];
-    try {
-      if (userId !== "anonymous") {
+    // Only try to get history if user is authenticated and not anonymous
+    if (userId !== "anonymous") {
+      try {
         const history = await getUserRecommendationHistory(userId);
         previousRecommendations = history.flatMap((rec) => [
           ...(rec.tracks?.map((track) => track.trackId) || []),
           ...(rec.albums?.map((album) => album.albumId) || []),
         ]);
+      } catch (error) {
+        console.warn("Failed to get recommendation history:", error);
+        // Continue without history
       }
-    } catch (error) {
-      console.warn("Failed to get recommendation history:", error);
     }
 
     const prompt = `
@@ -200,23 +204,24 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       searchTerm: string,
       count: number,
       excludeIds: string[] = []
-    ) => {
+    ): Promise<SpotifyTrack[] | SpotifyAlbumFull[]> => {
       if (type === "tracks") {
         const result = await searchTracks(`${genre} ${mood}`);
         if (result.tracks && result.tracks.items.length > 0) {
           return result.tracks.items
             .filter((track) => !excludeIds.includes(track.id))
-            .slice(0, count);
+            .slice(0, count) as SpotifyTrack[];
         }
+        return [];
       } else {
         const result = await searchAlbums(`${genre} ${mood}`);
         if (result.albums && result.albums.items.length > 0) {
           return result.albums.items
             .filter((album) => !excludeIds.includes(album.id))
-            .slice(0, count);
+            .slice(0, count) as SpotifyAlbumFull[];
         }
+        return [];
       }
-      return [];
     };
 
     // Process songs
@@ -225,57 +230,62 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
         if (!item) return null;
         const { name: songName, artist: artistName } = item;
 
-        const result = await searchTracks(
-          `track:${songName} artist:${artistName}`
-        );
-        if (!result.tracks || result.tracks.items.length === 0) return null;
-
-        let track = result.tracks.items
-          .filter(
-            (t) =>
-              !recentlyPlayedTracks.includes(t.id) &&
-              !previousRecommendations.includes(t.id)
-          )
-          .find(
-            (t) =>
-              t.artists.some((a) =>
-                a.name.toLowerCase().includes(artistName.toLowerCase())
-              ) && t.name.toLowerCase().includes(songName.toLowerCase())
-          );
-
-        if (!track && result.tracks.items.length > 0) {
-          track = result.tracks.items[0];
-        }
-
-        if (!track) return null;
-
-        let youtubeData = null;
         try {
-          const youtubeResults = await searchYouTubeVideos(
-            `${track.name} ${track.artists[0].name} official audio`
+          const result = await searchTracks(
+            `track:${songName} artist:${artistName}`
           );
-          if (youtubeResults && youtubeResults.length > 0) {
-            youtubeData = {
-              videoId: youtubeResults[0].id.videoId,
-              title: youtubeResults[0].snippet.title,
-              thumbnail: youtubeResults[0].snippet.thumbnails.high.url,
-            };
-          }
-        } catch (error) {
-          console.warn(`YouTube search failed for ${track.name}:`, error);
-        }
+          if (!result.tracks || result.tracks.items.length === 0) return null;
 
-        return {
-          songName: track.name,
-          artistName: track.artists[0].name,
-          songId: track.id,
-          albumName: track.album.name,
-          albumId: track.album.id,
-          albumCover: track.album.images?.[0]?.url || null,
-          previewUrl: track.preview_url,
-          spotifyUrl: track.external_urls?.spotify || null,
-          youtubeData,
-        };
+          let track = result.tracks.items
+            .filter(
+              (t) =>
+                !recentlyPlayedTracks.includes(t.id) &&
+                !previousRecommendations.includes(t.id)
+            )
+            .find(
+              (t) =>
+                t.artists.some((a) =>
+                  a.name.toLowerCase().includes(artistName.toLowerCase())
+                ) && t.name.toLowerCase().includes(songName.toLowerCase())
+            );
+
+          if (!track && result.tracks.items.length > 0) {
+            track = result.tracks.items[0];
+          }
+
+          if (!track) return null;
+
+          let youtubeData = null;
+          try {
+            const youtubeResults = await searchYouTubeVideos(
+              `${track.name} ${track.artists[0].name} official audio`
+            );
+            if (youtubeResults && youtubeResults.length > 0) {
+              youtubeData = {
+                videoId: youtubeResults[0].id.videoId,
+                title: youtubeResults[0].snippet.title,
+                thumbnail: youtubeResults[0].snippet.thumbnails.high.url,
+              };
+            }
+          } catch (error) {
+            console.warn(`YouTube search failed for ${track.name}:`, error);
+          }
+
+          return {
+            songName: track.name,
+            artistName: track.artists[0].name,
+            songId: track.id,
+            albumName: track.album.name,
+            albumId: track.album.id,
+            albumCover: track.album.images?.[0]?.url || null,
+            previewUrl: track.preview_url,
+            spotifyUrl: track.external_urls?.spotify || null,
+            youtubeData,
+          };
+        } catch (error) {
+          console.warn(`Failed to search for song ${songName}:`, error);
+          return null;
+        }
       })
     );
 
@@ -285,43 +295,48 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
         if (!item) return null;
         const { name: albumName, artist: artistName } = item;
     
-        const result = await searchAlbums(
-          `album:${albumName} artist:${artistName}`
-        );
-        if (!result.albums || result.albums.items.length === 0) return null;
-    
-        let album = result.albums.items
-          .filter((a) => !previousRecommendations.includes(a.id))
-          .find(
-            (a) =>
-              a.artists.some((artist) =>
-                artist.name.toLowerCase().includes(artistName.toLowerCase())
-              ) && a.name.toLowerCase().includes(albumName.toLowerCase())
+        try {
+          const result = await searchAlbums(
+            `album:${albumName} artist:${artistName}`
           );
+          if (!result.albums || result.albums.items.length === 0) return null;
     
-        if (!album && result.albums.items.length > 0) {
-          album = result.albums.items[0];
+          let album = result.albums.items
+            .filter((a) => !previousRecommendations.includes(a.id))
+            .find(
+              (a) =>
+                a.artists.some((artist) =>
+                  artist.name.toLowerCase().includes(artistName.toLowerCase())
+                ) && a.name.toLowerCase().includes(albumName.toLowerCase())
+            );
+    
+          if (!album && result.albums.items.length > 0) {
+            album = result.albums.items[0];
+          }
+    
+          if (!album) return null;
+    
+          // Safe property access with type checking
+          const albumCover = hasImages(album) && album.images.length > 0 
+            ? album.images[0].url 
+            : null;
+          
+          const releaseDate = isFullAlbum(album) 
+            ? album.release_date 
+            : null;
+    
+          return {
+            albumName: album.name,
+            artistName: album.artists[0].name,
+            albumId: album.id,
+            albumCover,
+            spotifyUrl: album.external_urls?.spotify || null,
+            releaseDate,
+          };
+        } catch (error) {
+          console.warn(`Failed to search for album ${albumName}:`, error);
+          return null;
         }
-    
-        if (!album) return null;
-    
-        // Safe property access with type checking
-        const albumCover = hasImages(album) && album.images.length > 0 
-          ? album.images[0].url 
-          : null;
-        
-        const releaseDate = isFullAlbum(album) 
-          ? album.release_date 
-          : null;
-    
-        return {
-          albumName: album.name,
-          artistName: album.artists[0].name,
-          albumId: album.id,
-          albumCover,
-          spotifyUrl: album.external_urls?.spotify || null,
-          releaseDate,
-        };
       })
     );
 
@@ -338,7 +353,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
         previousRecommendations
       );
     
-      const processedBackupAlbums = backupAlbums.map((album) => {
+      const processedBackupAlbums = (backupAlbums as SpotifyAlbumFull[]).map((album) => {
         const albumCover = hasImages(album) && album.images.length > 0 
           ? album.images[0].url 
           : null;
@@ -364,19 +379,70 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
     } else {
       finalAlbums = validVerifiedAlbums.slice(0, 5);
     }
+
+    // Filter out null values from songs and handle backup if needed
+    const validVerifiedSongs = verifiedSongs.filter((song): song is NonNullable<typeof song> => song !== null);
     
+    let finalSongs;
+    if (validVerifiedSongs.length < 5) {
+      const backupSongs = await getBackupSuggestions(
+        "tracks",
+        `${genre} ${mood}`,
+        5 - validVerifiedSongs.length,
+        [...recentlyPlayedTracks, ...previousRecommendations]
+      );
 
-    // Filter out null values from songs
-    const finalSongs = verifiedSongs.filter((song): song is NonNullable<typeof song> => song !== null).slice(0, 5);
+      const processedBackupSongs = await Promise.all(
+        (backupSongs as SpotifyTrack[]).map(async (track) => {
+          let youtubeData = null;
+          try {
+            const youtubeResults = await searchYouTubeVideos(
+              `${track.name} ${track.artists[0].name} official audio`
+            );
+            if (youtubeResults && youtubeResults.length > 0) {
+              youtubeData = {
+                videoId: youtubeResults[0].id.videoId,
+                title: youtubeResults[0].snippet.title,
+                thumbnail: youtubeResults[0].snippet.thumbnails.high.url,
+              };
+            }
+          } catch (error) {
+            console.warn(`YouTube search failed for ${track.name}:`, error);
+          }
 
+          return {
+            songName: track.name,
+            artistName: track.artists[0].name,
+            songId: track.id,
+            albumName: track.album.name,
+            albumId: track.album.id,
+            albumCover: track.album.images?.[0]?.url || null,
+            previewUrl: track.preview_url,
+            spotifyUrl: track.external_urls?.spotify || null,
+            youtubeData,
+          };
+        })
+      );
+
+      finalSongs = [
+        ...validVerifiedSongs,
+        ...processedBackupSongs,
+      ].slice(0, 5);
+    } else {
+      finalSongs = validVerifiedSongs.slice(0, 5);
+    }
+
+    // Cache the results
     userRecommendationCache.set(cacheKey, {
       timestamp: Date.now(),
       songs: finalSongs,
       albums: finalAlbums,
     });
 
+    // Only save to database if user is authenticated and not anonymous
     if (userId !== "anonymous") {
       try {
+        // First, ensure the user exists in the database
         await saveUserRecommendationHistory(userId, {
           type: RecommendationType.MOOD_BASED,
           mood: convertToMoodType(mood),
@@ -407,6 +473,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
         });
       } catch (error) {
         console.warn("Failed to save recommendation history:", error);
+        // Continue without saving to database
       }
     }
 

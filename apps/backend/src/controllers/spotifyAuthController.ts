@@ -19,17 +19,14 @@ setInterval(() => {
 
 export const initiateSpotifyAuth = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Generate session ID and state for CSRF protection
     const sessionId = uuidv4();
     const state = uuidv4();
     
-    // Store session
     sessionStorage.set(sessionId, {
       state,
       timestamp: Date.now(),
     });
 
-    // Set session cookie
     res.cookie('spotify_session', sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -37,7 +34,6 @@ export const initiateSpotifyAuth = async (req: Request, res: Response): Promise<
       maxAge: 60 * 60 * 1000, // 1 hour
     });
 
-    // Get authorization URL
     const authUrl = spotifyAuthService.getAuthUrl(state);
 
     res.json({
@@ -58,7 +54,6 @@ export const handleSpotifyCallback = async (req: Request, res: Response): Promis
   };
 
   try {
-    // Handle authorization errors
     if (error) {
       console.error('Spotify authorization error:', error);
       res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}?error=access_denied`);
@@ -70,7 +65,6 @@ export const handleSpotifyCallback = async (req: Request, res: Response): Promis
       return;
     }
 
-    // Verify session and state
     const sessionId = req.cookies?.spotify_session;
     if (!sessionId) {
       res.status(400).json({ error: 'Missing session cookie' });
@@ -83,23 +77,19 @@ export const handleSpotifyCallback = async (req: Request, res: Response): Promis
       return;
     }
 
-    // Exchange code for token
     const tokenData = await spotifyAuthService.exchangeCodeForToken(code);
 
-    // Update session with user ID
     sessionStorage.set(sessionId, {
       ...session,
       userId: tokenData.user.id,
     });
 
-    // Create JWT or session token for frontend (optional)
     const userToken = Buffer.from(JSON.stringify({
       userId: tokenData.user.id,
       sessionId,
       timestamp: Date.now()
     })).toString('base64');
 
-    // Redirect to frontend with success and user token
     const redirectUrl = new URL(process.env.FRONTEND_URL || 'http://localhost:3000');
     redirectUrl.searchParams.set('auth', 'success');
     redirectUrl.searchParams.set('token', userToken);
@@ -153,7 +143,6 @@ export const logoutUser = async (req: Request, res: Response): Promise<void> => 
       sessionStorage.delete(sessionId);
     }
 
-    // Clear session cookie
     res.clearCookie('spotify_session');
 
     res.json({ message: 'Successfully logged out' });
@@ -187,7 +176,6 @@ export const refreshUserToken = async (req: Request, res: Response): Promise<voi
   }
 };
 
-// Middleware to authenticate requests
 export const authenticateSpotifyUser = async (req: Request, res: Response, next: any): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
@@ -195,18 +183,15 @@ export const authenticateSpotifyUser = async (req: Request, res: Response, next:
 
     let userId: string | null = null;
 
-    // Try to get user ID from Authorization header (base64 encoded user token)
     if (authHeader?.startsWith('Bearer ')) {
       try {
         const token = authHeader.substring(7);
         const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
         userId = decoded.userId;
       } catch (e) {
-        // Invalid token format, continue
       }
     }
 
-    // Try to get user ID from session cookie
     if (!userId && sessionId) {
       const session = sessionStorage.get(sessionId);
       userId = session?.userId || null;
@@ -217,14 +202,12 @@ export const authenticateSpotifyUser = async (req: Request, res: Response, next:
       return;
     }
 
-    // Check if user has valid Spotify token
     const isAuthenticated = spotifyAuthService.isAuthenticated(userId);
     if (!isAuthenticated) {
       res.status(401).json({ error: 'Spotify authentication expired. Please re-authenticate.' });
       return;
     }
 
-    // Add user to request
     req.user = { id: userId };
     next();
   } catch (error: any) {

@@ -66,7 +66,6 @@ function hasImages(obj: any): obj is { images: SpotifyImage[] } {
   return obj && Array.isArray(obj.images);
 }
 
-// Cache and constants
 const userRecommendationCache = new Map<
   string,
   {
@@ -116,19 +115,16 @@ export const getAISongSuggestions = async (
     }
 
     let recentlyPlayedTracks: string[] = [];
-    // Only try to get recently played if user is authenticated and not anonymous
     if (userId !== "anonymous") {
       try {
         const recentlyPlayed = await getUserRecentlyPlayed(userId);
         recentlyPlayedTracks = recentlyPlayed.map((item) => item.track.id);
       } catch (error) {
         console.warn("Failed to get recently played tracks:", error);
-        // Continue without recently played tracks
       }
     }
 
     let previousRecommendations: string[] = [];
-    // Only try to get history if user is authenticated and not anonymous
     if (userId !== "anonymous") {
       try {
         const history = await getUserRecommendationHistory(userId);
@@ -138,7 +134,6 @@ export const getAISongSuggestions = async (
         ]);
       } catch (error) {
         console.warn("Failed to get recommendation history:", error);
-        // Continue without history
       }
     }
 
@@ -340,7 +335,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       })
     );
 
-    // Filter out null values and handle backup suggestions
     const validVerifiedAlbums = verifiedAlbums.filter((album): album is NonNullable<typeof album> => album !== null);
 
     let finalAlbums;
@@ -380,7 +374,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       finalAlbums = validVerifiedAlbums.slice(0, 5);
     }
 
-    // Filter out null values from songs and handle backup if needed
     const validVerifiedSongs = verifiedSongs.filter((song): song is NonNullable<typeof song> => song !== null);
     
     let finalSongs;
@@ -442,7 +435,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
     // Only save to database if user is authenticated and not anonymous
     if (userId !== "anonymous") {
       try {
-        // First, ensure the user exists in the database
         await saveUserRecommendationHistory(userId, {
           type: RecommendationType.MOOD_BASED,
           mood: convertToMoodType(mood),

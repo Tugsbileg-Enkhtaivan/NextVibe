@@ -85,7 +85,6 @@ type SpotifyTrack = {
   available_markets?: string[];
 };
 
-// This is the complete Spotify Web API search response structure
 type SpotifySearchResponse = {
   tracks?: SpotifyPagingObject<SpotifyTrack>;
   albums?: SpotifyPagingObject<SpotifyAlbumSimplified>;
@@ -107,7 +106,6 @@ type SpotifyRecentlyPlayedResponse = {
   };
 };
 
-// Router handlers remain the same...
 router.get('/login', requireClerkAuth, (req, res) => {
   const params = qs.stringify({
     response_type: 'code',
@@ -147,7 +145,6 @@ router.get('/callback', requireClerkAuth, async (req, res) => {
 
     const { access_token, refresh_token, expires_in } = response.data;
     
-    // Check if refresh_token is provided
     if (!refresh_token) {
       res.status(500).json({ error: 'No refresh token received from Spotify' });
       return;
@@ -286,7 +283,6 @@ export const authenticateSpotify = async (): Promise<string> => {
   }
 };
 
-// Updated search functions with proper return types
 export const searchTracks = async (query: string, limit: number = 20): Promise<SpotifySearchResponse> => {
   try {
     const token = await authenticateSpotify();
@@ -341,7 +337,6 @@ export const getUserRecentlyPlayed = async (userId: string, limit: number = 20):
 
     let accessToken = account.accessToken;
 
-    // Check if token needs refresh
     if (Date.now() >= account.expiresAt.getTime()) {
       const refreshRes = await axios.post<SpotifyTokenResponse>(
         'https://accounts.spotify.com/api/token',
@@ -385,7 +380,6 @@ export const getUserRecentlyPlayed = async (userId: string, limit: number = 20):
   }
 };
 
-// Export types for use in other files
 export type { SpotifySearchResponse, SpotifyTrack, SpotifyAlbumSimplified as SpotifyAlbum };
 
 export default router;

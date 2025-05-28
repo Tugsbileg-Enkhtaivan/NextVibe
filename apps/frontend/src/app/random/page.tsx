@@ -33,7 +33,7 @@ export default function SlotMachine() {
     const [result, setResult] = useState<Result | null>(null);
     const [moodIndex, setMoodIndex] = useState(0);
     const [genreIndex, setGenreIndex] = useState(0);
-    const spinTimerRef = useRef(null);
+    const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const spinCountRef = useRef(0);
     const [mood, setMood] = useState<string | null>(null);
     const [genre, setGenre] = useState<string | null>(null);
@@ -91,8 +91,8 @@ export default function SlotMachine() {
     }, []);
 
     useEffect(() => {
-        setGenre(result?.genre);
-        setMood(result?.mood)
+        setGenre(result?.genre as string);
+        setMood(result?.mood as string)
     }, [result]);
 
     const getData = async () => {

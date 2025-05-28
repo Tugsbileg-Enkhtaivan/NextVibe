@@ -67,13 +67,13 @@ const FlipSwiper: React.FC = () => {
             navigation={false}
             modules={[EffectFlip, Pagination, Navigation]}
             onSlideChange={(swiper) => {
-                console.log('Current index:', swiper.activeIndex);
+                // console.log('Current index:', swiper.activeIndex);
             }}
         >
             {Object.entries(topMusicGenres).map(([key, value]) => {
                 return (
                     <SwiperSlide key={key}>
-                        <div className={`w-[80%] h-25 mx-auto text-white text-xl font-bold rounded-xl text-center flex gap-3 items-center justify-center ${value.color}`}>
+                        <div className={`w-[80%] h-25 mx-auto text-white text-xl font-bold rounded-xl text-center flex gap-3 items-center justify-center border-4 border-white ${value.color}`}>
                             <img className='w-15' src={value.image} />
                             <h1 className='text-4xl'>{key.toUpperCase()}</h1>
                         </div>

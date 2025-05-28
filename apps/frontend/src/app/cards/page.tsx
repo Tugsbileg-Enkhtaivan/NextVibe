@@ -9,8 +9,7 @@ import "swiper/css/pagination";
 
 import Image from "next/image";
 import FlipSwiper from "../components/FlipSwiper";
-import { url } from "inspector";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 type EmotionData = {
     image: string;
@@ -18,13 +17,13 @@ type EmotionData = {
 };
 
 const data: Record<string, EmotionData> = {
-    anger: {
-        image: "/assets/anger.webp",
-        color: "linear-gradient(135deg, #F44336 0%, #D32F2F 50%, #B71C1C 100%)",
-    },
     joy: {
         image: "/assets/joy.webp",
         color: "linear-gradient(135deg, #FFEB3B 0%, #FFC107 50%, #FF8F00 100%)",
+    },
+    anger: {
+        image: "/assets/anger.webp",
+        color: "linear-gradient(135deg, #F44336 0%, #D32F2F 50%, #B71C1C 100%)",
     },
     envy: {
         image: "/assets/envy.webp",
@@ -56,10 +55,56 @@ const data: Record<string, EmotionData> = {
     },
 };
 
+export const topMusicGenres = {
+    Pop: {
+        color: "bg-red-300",
+        image: "/assets/pop-sticker.png"
+    },
+    Rock: {
+        color: "bg-orange-500",
+        image: "/assets/finger.png"
+    },
+    HipHop: {
+        color: "bg-orange-700",
+        image: "/assets/orange-hat.png"
+    },
+    Electronic: {
+        color: "bg-violet-500",
+        image: "/assets/headset.png"
+    },
+    Soul: {
+        color: "bg-amber-400",
+        image: "/assets/heart.png"
+    },
+    Country: {
+        color: "bg-amber-600",
+        image: "/assets/guitar.png"
+    },
+    Jazz: {
+        color: "bg-teal-600",
+        image: "/assets/buree.png"
+    },
+    Classical: {
+        color: "bg-red-900",
+        image: "/assets/vionyl.png"
+    },
+    Reggae: {
+        color: "bg-green-700",
+        image: "/assets/reggie.png"
+    },
+    Blues: {
+        color: "bg-sky-600",
+        image: "/assets/blues.png"
+    },
+};
+
+const sticker = Object.entries(topMusicGenres);
+
 
 export default function CardCarousel() {
     const swiperRef = useRef<SwiperClass | null>(null);
     const [index, setIndex] = useState(0);
+    const [genreIndex, setGenreIndex] = useState(0);
 
 
     const colors = Object.entries(data)
@@ -70,7 +115,20 @@ export default function CardCarousel() {
         // console.log(index)
     };
     return (
-        <div className="max-w-[430px] w-full min-h-screen mx-auto space-y-6 bg-black py-6 bg-center bg-cover" style={{ backgroundImage: `${colors[index][1].color}` }}>
+        <div className="max-w-[430px] w-full min-h-screen mx-auto space-y-6 bg-black py-6 bg-center bg-cover overflow-hidden pt-20 relative" style={{ backgroundImage: `${colors[index][1].color}` }}>
+            <div className="w-full min-h-screen h-full absolute [&>*]:absolute">
+                <img className="w-[20%] top-[-15%] left-[40%] rotate-50" src={`${sticker[genreIndex][1].image}`}></img>
+                <img className="w-[25%] bottom-[56%] right-[-7%] rotate-20" src={`${sticker[genreIndex][1].image}`}></img>
+                <img className="w-[28%] top-[-7%] left-[1%] rotate-[-20deg]" src={`${sticker[genreIndex][1].image}`}></img>
+                <img className="w-[30%] top-[-14%] right-[-5%] rotate-220" src={`${sticker[genreIndex][1].image}`}></img>
+                <img className="w-[15%] top-[20%] left-[-3%] rotate-30" src={`${sticker[genreIndex][1].image}`}></img>
+                <img className="w-[30%] top-[37%] left-[-10%] rotate-[-35deg]" src={`${sticker[genreIndex][1].image}`}></img>
+                <img className="w-[10%] top-[10%] right-[-3%] rotate-[-20deg]" src={`${sticker[genreIndex][1].image}`}></img>
+                <img className="w-[60%] bottom-[23%] right-[-10%] rotate-130" src={`${sticker[genreIndex][1].image}`}></img>
+                <img className="w-[25%] bottom-[15%] left-[7%] rotate-40" src={`${sticker[genreIndex][1].image}`}></img>
+                <img className="w-[20%] bottom-[15%] right-[35%] rotate-[-30deg]" src={`${sticker[genreIndex][1].image}`}></img>
+            </div>
+            <h1 className="relative text-white text-3xl text-center font-bold z-2">SELECT YOUR MOOD</h1>
             <Swiper
                 effect="cards"
                 loop={true}
@@ -106,7 +164,7 @@ export default function CardCarousel() {
                 ))}
             </Swiper>
 
-            <FlipSwiper />
+            <FlipSwiper setGenreIndex={setGenreIndex} />
         </div>
     );
 }

@@ -1,20 +1,19 @@
-import { Router } from 'express';
-import {
-  initiateSpotifyAuth,
-  handleSpotifyCallback,
-  getCurrentUser,
-  logoutUser,
+import express from 'express';
+import { 
+  initiateSpotifyAuth, 
+  handleSpotifyCallback, 
+  getCurrentUser, 
+  logoutUser, 
   refreshUserToken,
-  authenticateSpotifyUser
-} from '../controllers/spotifyAuthController';
+  authenticateSpotifyUser 
+} from '../controllers/enhancedSpotifyAuthController';
 
-const router = Router();
+const router = express.Router();
 
-router.get('/auth/spotify', initiateSpotifyAuth);
-router.get('/auth/spotify/callback', handleSpotifyCallback);
-
+router.get('/auth', initiateSpotifyAuth);
+router.get('/callback', handleSpotifyCallback);
 router.get('/user/me', authenticateSpotifyUser, getCurrentUser);
-router.post('/user/logout', authenticateSpotifyUser, logoutUser);
 router.post('/user/refresh-token', authenticateSpotifyUser, refreshUserToken);
+router.post('/user/logout', authenticateSpotifyUser, logoutUser);
 
 export default router;

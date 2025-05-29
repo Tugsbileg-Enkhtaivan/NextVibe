@@ -2,7 +2,6 @@
 
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectFlip, Pagination, Navigation } from 'swiper/modules';
-import { topMusicGenres } from '../cards/page';
 import 'swiper/css';
 import 'swiper/css/effect-flip';
 import 'swiper/css/pagination';
@@ -14,8 +13,58 @@ interface ChildProps {
     setGenreIndex: React.Dispatch<React.SetStateAction<number>>;
 }
 
+type EmotionData = {
+    image: string;
+    color: string;
+};
 
-const FlipSwiper: React.FC<ChildProps> = ({ setGenreIndex }) => {
+const topMusicGenres: Record<string, EmotionData> = {
+    Pop: {
+        color: "bg-red-300",
+        image: "/assets/pop-sticker.png"
+    },
+    Rock: {
+        color: "bg-orange-500",
+        image: "/assets/finger.png"
+    },
+    HipHop: {
+        color: "bg-orange-700",
+        image: "/assets/orange-hat.png"
+    },
+    Electronic: {
+        color: "bg-violet-500",
+        image: "/assets/headset.png"
+    },
+    Soul: {
+        color: "bg-amber-400",
+        image: "/assets/heart.png"
+    },
+    Country: {
+        color: "bg-amber-600",
+        image: "/assets/guitar.png"
+    },
+    Jazz: {
+        color: "bg-teal-600",
+        image: "/assets/buree.png"
+    },
+    Classical: {
+        color: "bg-red-900",
+        image: "/assets/vionyl.png"
+    },
+    Reggae: {
+        color: "bg-green-700",
+        image: "/assets/reggie.png"
+    },
+    Blues: {
+        color: "bg-sky-600",
+        image: "/assets/blues.png"
+    },
+};
+
+
+const FlipSwiper: React.FC<ChildProps> = ({ setGenreIndex }: ChildProps) => {
+
+
 
 
 

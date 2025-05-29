@@ -17,32 +17,54 @@ interface RecommendationData {
   albums: any[];
 }
 
+export const ensureUserExistsInService = async (userId: string) => {
+  try {
+    let user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true }
+    });
+
+    if (!user) {
+      console.log(`🔄 Creating user ${userId} in service...`);
+      
+      user = await prisma.user.create({
+        data: {
+          id: userId,
+          email: `${userId}@temp.com`,
+          username: `user_${userId.substring(0, 8)}`,
+          profile: {
+            create: {}
+          }
+        },
+        include: {
+          profile: true
+        }
+      });
+      
+      console.log(`✅ User created in service: ${userId}`);
+    }
+
+    return user;
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return await prisma.user.findUnique({
+        where: { id: userId },
+        include: { profile: true }
+      });
+    }
+    throw error;
+  }
+};
+
 export const saveUserRecommendationHistory = async (
   userId: string,
   recommendation: RecommendationData
 ) => {
   try {
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+    // Ensure user exists first
+    await ensureUserExistsInService(userId);
 
-    if (!existingUser) {
-      try {
-        await prisma.user.create({
-          data: {
-            id: userId,
-            email: `${userId}@temp.com`, 
-            username: `user_${userId.substring(0, 8)}`, 
-          }
-        });
-      } catch (createError: any) {
-        if (createError.code !== 'P2002') {
-          throw createError;
-        }
-      }
-    }
-
-    return await prisma.recommendation.create({
+    const savedRecommendation = await prisma.recommendation.create({
       data: {
         userId,
         type: recommendation.type,
@@ -55,9 +77,9 @@ export const saveUserRecommendationHistory = async (
         parameters: recommendation.parameters,
         tracks: {
           create: recommendation.tracks.map((track, index) => ({
-            trackId: track.id || track.trackId,
+            trackId: track.id || track.trackId || track.songId,
             position: index,
-            name: track.name,
+            name: track.name || track.songName,
             artistNames: Array.isArray(track.artists) 
               ? track.artists.map((artist: any) => artist.name)
               : Array.isArray(track.artistNames) 
@@ -85,15 +107,18 @@ export const saveUserRecommendationHistory = async (
             totalTracks: album.total_tracks || album.totalTracks || null
           }))
         }
+      },
+      include: {
+        tracks: true,
+        albums: true
       }
     });
+
+    console.log(`✅ Recommendation saved for user ${userId}`);
+    return savedRecommendation;
   } catch (error: any) {
-    console.error('Error saving recommendation history:', error);
-    if (error.code === 'P2003') {
-      console.warn('User not found in database, skipping recommendation history save');
-      return null;
-    }
-    throw new Error('Failed to save recommendation history');
+    console.error('❌ Error saving recommendation history:', error);
+    throw new Error(`Failed to save recommendation history: ${error.message}`);
   }
 };
 
@@ -102,16 +127,9 @@ export const getUserRecommendationHistory = async (
   limit: number = 10
 ) => {
   try {
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+    await ensureUserExistsInService(userId);
 
-    if (!existingUser) {
-      console.warn(`User ${userId} not found in database`);
-      return [];
-    }
-
-    return await prisma.recommendation.findMany({
+    const recommendations = await prisma.recommendation.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -124,9 +142,44 @@ export const getUserRecommendationHistory = async (
         }
       }
     });
+
+    console.log(`✅ Retrieved ${recommendations.length} recommendations for user ${userId}`);
+    return recommendations;
   } catch (error) {
-    console.error('Error retrieving recommendation history:', error);
+    console.error('❌ Error retrieving recommendation history:', error);
     return [];
+  }
+};
+
+export const saveMoodEntry = async (
+  userId: string,
+  moodData: {
+    mood: MoodType;
+    energy: EnergyLevel;
+    valence: ValenceLevel;
+    genres: string[];
+    description?: string;
+  }
+) => {
+  try {
+    await ensureUserExistsInService(userId);
+
+    const moodEntry = await prisma.moodEntry.create({
+      data: {
+        userId,
+        mood: moodData.mood,
+        energy: moodData.energy,
+        valence: moodData.valence,
+        genres: moodData.genres,
+        description: moodData.description
+      }
+    });
+
+    console.log(`✅ Mood entry saved for user ${userId}`);
+    return moodEntry;
+  } catch (error) {
+    console.error('❌ Error saving mood entry:', error);
+    throw new Error('Failed to save mood entry');
   }
 };
 

@@ -1,9 +1,11 @@
 import dotenv from "dotenv";
-import express, { Request, Response ,NextFunction } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { PrismaClient } from "@prisma/client";
 import aiSongRouter from "./routes/aiSongRouter";
 import { requireClerkAuth } from "./middlewares/requireClerkAuth";
 import { clerkMiddleware } from "@clerk/express";
+import spotifyAuthRoutes from './routes/spotifyAuthRoutes';
+import cookieParser from 'cookie-parser';
 
 dotenv.config();
 
@@ -34,11 +36,15 @@ app.options("/{*any}", (req, res) => {
   res.sendStatus(200);
 });
 
-app.use(clerkMiddleware());
 
+app.use(clerkMiddleware());
 app.use(express.json());
+app.use(cookieParser()); 
+
 
 app.use("/api/ai-song", aiSongRouter);
+
+app.use('/', spotifyAuthRoutes);
 
 app.get("/", requireClerkAuth, async (_req: Request, res: Response) => {
   try {

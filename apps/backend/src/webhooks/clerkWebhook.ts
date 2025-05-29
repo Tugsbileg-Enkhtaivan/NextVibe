@@ -5,6 +5,24 @@ import { Webhook } from 'svix';
 
 const prisma = new PrismaClient();
 
+interface ClerkWebhookEvent {
+  type: string;
+  data: ClerkUserData;
+  object: string;
+}
+
+interface ClerkUserData {
+  id: string;
+  email_addresses: Array<{
+    id: string;
+    email_address: string;
+  }>;
+  primary_email_address_id: string;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 export const handleClerkWebhook = async (req: Request, res: Response) => {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
   
@@ -15,16 +33,15 @@ export const handleClerkWebhook = async (req: Request, res: Response) => {
   const headers = req.headers;
   const payload = req.body;
 
-  // Verify the webhook
   const wh = new Webhook(WEBHOOK_SECRET);
-  let evt;
+  let evt: ClerkWebhookEvent;
   
   try {
     evt = wh.verify(payload, {
       'svix-id': headers['svix-id'] as string,
       'svix-timestamp': headers['svix-timestamp'] as string,
       'svix-signature': headers['svix-signature'] as string,
-    });
+    }) as ClerkWebhookEvent;
   } catch (err) {
     console.error('Error verifying webhook:', err);
     return res.status(400).json({ error: 'Invalid signature' });
@@ -54,10 +71,10 @@ export const handleClerkWebhook = async (req: Request, res: Response) => {
   }
 };
 
-const handleUserCreated = async (userData: any) => {
+const handleUserCreated = async (userData: ClerkUserData) => {
   const { id, email_addresses, username, first_name, last_name } = userData;
   
-  const primaryEmail = email_addresses.find((email: any) => email.id === userData.primary_email_address_id);
+  const primaryEmail = email_addresses.find((email) => email.id === userData.primary_email_address_id);
   
   try {
     await prisma.user.create({
@@ -77,10 +94,10 @@ const handleUserCreated = async (userData: any) => {
   }
 };
 
-const handleUserUpdated = async (userData: any) => {
+const handleUserUpdated = async (userData: ClerkUserData) => {
   const { id, email_addresses, username, first_name, last_name } = userData;
   
-  const primaryEmail = email_addresses.find((email: any) => email.id === userData.primary_email_address_id);
+  const primaryEmail = email_addresses.find((email) => email.id === userData.primary_email_address_id);
   
   try {
     await prisma.user.upsert({
@@ -101,11 +118,10 @@ const handleUserUpdated = async (userData: any) => {
   }
 };
 
-const handleUserDeleted = async (userData: any) => {
+const handleUserDeleted = async (userData: ClerkUserData) => {
   const { id } = userData;
   
   try {
-    // Delete user and all related data (cascading delete should handle this)
     await prisma.user.delete({
       where: { id }
     });

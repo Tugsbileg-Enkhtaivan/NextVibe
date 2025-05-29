@@ -1,4 +1,3 @@
-// utils/clientAuthService.ts
 import axios from 'axios';
 
 interface SpotifyUser {

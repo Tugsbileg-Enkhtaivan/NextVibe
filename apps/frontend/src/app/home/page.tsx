@@ -55,7 +55,7 @@ const data: Record<string, EmotionData> = {
     },
 };
 
-export const topMusicGenres = {
+ const topMusicGenres: Record<string, EmotionData> = {
     Pop: {
         color: "bg-red-300",
         image: "/assets/pop-sticker.png"
@@ -165,6 +165,9 @@ export default function CardCarousel() {
             </Swiper>
 
             <FlipSwiper setGenreIndex={setGenreIndex} />
+            <div className="w-full h-fit">
+                <button className="">Generate</button>
+            </div>
         </div>
     );
 }

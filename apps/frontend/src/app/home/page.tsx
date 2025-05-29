@@ -9,7 +9,7 @@ import "swiper/css/pagination";
 
 import Image from "next/image";
 import FlipSwiper from "../components/FlipSwiper";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type EmotionData = {
     image: string;
@@ -55,7 +55,7 @@ const data: Record<string, EmotionData> = {
     },
 };
 
- const topMusicGenres: Record<string, EmotionData> = {
+const topMusicGenres: Record<string, EmotionData> = {
     Pop: {
         color: "bg-red-300",
         image: "/assets/pop-sticker.png"
@@ -105,6 +105,8 @@ export default function CardCarousel() {
     const swiperRef = useRef<SwiperClass | null>(null);
     const [index, setIndex] = useState(0);
     const [genreIndex, setGenreIndex] = useState(0);
+    const [selectedMood, setSelectedMood] = useState("");
+    const [selectedGenre, setSelectedGenre] = useState("");
 
 
     const colors = Object.entries(data)
@@ -114,8 +116,17 @@ export default function CardCarousel() {
     const handleMoodClick = (index: number) => {
         // console.log(index)
     };
+
+    useEffect(() => {
+        setSelectedMood(Object.entries(data)[index][0])
+    }, [index]);
+
+    useEffect(() => {
+        setSelectedGenre(Object.entries(topMusicGenres)[genreIndex][0])
+    }, [genreIndex]);
+
     return (
-        <div className="max-w-[430px] w-full min-h-screen mx-auto space-y-6 bg-black py-6 bg-center bg-cover overflow-hidden pt-20 relative" style={{ backgroundImage: `${colors[index][1].color}` }}>
+        <div className="max-w-[430px] w-full min-h-screen mx-auto space-y-4 bg-black py-6 bg-center bg-cover overflow-hidden pt-12 relative" style={{ backgroundImage: `${colors[index][1].color}` }}>
             <div className="w-full min-h-screen h-full absolute [&>*]:absolute">
                 <img className="w-[20%] top-[-15%] left-[40%] rotate-50" src={`${sticker[genreIndex][1].image}`}></img>
                 <img className="w-[25%] bottom-[56%] right-[-7%] rotate-20" src={`${sticker[genreIndex][1].image}`}></img>
@@ -165,8 +176,8 @@ export default function CardCarousel() {
             </Swiper>
 
             <FlipSwiper setGenreIndex={setGenreIndex} />
-            <div className="w-full h-fit">
-                <button className="">Generate</button>
+            <div className="w-full h-fit relative flex justify-center">
+                <button className="text-white border-2 border-white rounded-full py-2 px-3 font-bold text-lg bg-purple-500">Generate</button>
             </div>
         </div>
     );

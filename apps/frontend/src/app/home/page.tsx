@@ -107,7 +107,7 @@ export default function CardCarousel() {
     const [genreIndex, setGenreIndex] = useState(0);
     const [selectedMood, setSelectedMood] = useState("");
     const [selectedGenre, setSelectedGenre] = useState("");
-
+    const [generateStart, setGenerateStart] = useState(false);
 
     const colors = Object.entries(data)
     // console.log(colors[index][1].color)
@@ -117,13 +117,20 @@ export default function CardCarousel() {
         // console.log(index)
     };
 
-    useEffect(() => {
-        setSelectedMood(Object.entries(data)[index][0])
-    }, [index]);
+    // useEffect(() => {
+    //     setSelectedMood(Object.entries(data)[index][0])
+    // }, [index]);
 
-    useEffect(() => {
-        setSelectedGenre(Object.entries(topMusicGenres)[genreIndex][0])
-    }, [genreIndex]);
+    // useEffect(() => {
+    //     setSelectedGenre(Object.entries(topMusicGenres)[genreIndex][0])
+    // }, [genreIndex]);
+
+    function generateMusic() {
+        setSelectedMood(Object.entries(data)[index][0]);
+        setSelectedGenre(Object.entries(topMusicGenres)[genreIndex][0]);
+        // console.log(selectedGenre, selectedMood)
+        setGenerateStart(true);
+    }
 
     return (
         <div className="max-w-[430px] w-full min-h-screen mx-auto space-y-4 bg-black py-6 bg-center bg-cover overflow-hidden pt-12 relative" style={{ backgroundImage: `${colors[index][1].color}` }}>
@@ -139,46 +146,62 @@ export default function CardCarousel() {
                 <img className="w-[25%] bottom-[15%] left-[7%] rotate-40" src={`${sticker[genreIndex][1].image}`}></img>
                 <img className="w-[20%] bottom-[15%] right-[35%] rotate-[-30deg]" src={`${sticker[genreIndex][1].image}`}></img>
             </div>
-            <h1 className="relative text-white text-3xl text-center font-bold z-2">SELECT YOUR MOOD</h1>
-            <Swiper
-                effect="cards"
-                loop={true}
-                grabCursor={true}
-                pagination={{ clickable: true }}
-                modules={[EffectCards, Pagination]}
-                className="w-[250px] h-[350px]"
-                // onSlideChange={(swiper) => {
-                //     console.log('Current index:', swiper.activeIndex);
-                // }}
-                onSwiper={(swiper) => {
-                    swiperRef.current = swiper;
+            <div className={`space-y-4 ${generateStart ? "hidden" : "block"}`}>
+                <h1 className={`relative text-white text-3xl text-center font-bold z-2
+                transition-all duration-700 ease-in-out transform
+                ${generateStart ? "opacity-0 -translate-y-10 scale-95 pointer-events-none" : "opacity-100 translate-y-0 scale-100"}
+              `}>SELECT YOUR MOOD</h1>
+                <Swiper
+                    effect="cards"
+                    loop={true}
+                    grabCursor={true}
+                    pagination={{ clickable: true }}
+                    modules={[EffectCards, Pagination]}
+                    className={`w-[250px] h-[350px] 
+                transition-all duration-700 ease-in-out transform
+                ${generateStart ? "opacity-0 -translate-y-10 scale-95 pointer-events-none" : "opacity-100 translate-y-0 scale-100"}
+              `}
+                    // onSlideChange={(swiper) => {
+                    //     console.log('Current index:', swiper.activeIndex);
+                    // }}
+                    onSwiper={(swiper) => {
+                        swiperRef.current = swiper;
 
-                    // ✅ Register event listener for activeIndexChange
-                    swiper.on("activeIndexChange", () => {
-                        // console.log("Active index changed to:", swiper.realIndex);
-                        setIndex(swiper.realIndex);
-                    });
-                }}
-            >
-                {Object.entries(data).map(([key, value], index) => (
-                    <SwiperSlide key={index}
-                        onClick={() => handleMoodClick(index)} className="flex items-center justify-center w-[400px] h-[400px] rounded-3xl relative border-4 border-white">
-                        <h1 className="absolute top-7 left-1/2 -translate-1/2 text-white font-bold text-3xl">{key[0].toUpperCase() + key.slice(1).toUpperCase()}</h1>
-                        <Image
-                            src={value.image}
-                            alt={`Slide ${index + 1}`}
-                            width={350}
-                            height={400}
-                            className="rounded-xl object-cover object-center mx-auto"
-                        />
-                    </SwiperSlide>
-                ))}
-            </Swiper>
+                        // ✅ Register event listener for activeIndexChange
+                        swiper.on("activeIndexChange", () => {
+                            // console.log("Active index changed to:", swiper.realIndex);
+                            setIndex(swiper.realIndex);
+                        });
+                    }}
+                >
+                    {Object.entries(data).map(([key, value], index) => (
+                        <SwiperSlide key={index}
+                            onClick={() => handleMoodClick(index)} className="flex items-center justify-center w-[400px] h-[400px] rounded-3xl relative border-4 border-white">
+                            <h1 className="absolute top-7 left-1/2 -translate-1/2 text-white font-bold text-3xl">{key[0].toUpperCase() + key.slice(1).toUpperCase()}</h1>
+                            <Image
+                                src={value.image}
+                                alt={`Slide ${index + 1}`}
+                                width={350}
+                                height={400}
+                                className="rounded-xl object-cover object-center mx-auto"
+                            />
+                        </SwiperSlide>
+                    ))}
+                </Swiper>
 
-            <FlipSwiper setGenreIndex={setGenreIndex} />
-            <div className="w-full h-fit relative flex justify-center">
-                <button className="text-white border-2 border-white rounded-full py-2 px-3 font-bold text-lg bg-purple-500">Generate</button>
+                <FlipSwiper setGenreIndex={setGenreIndex} generateStart={generateStart} />
+                <button
+                    onClick={generateMusic}
+                    className={`
+    text-white border-2 border-white rounded-full py-2 px-3 font-bold text-lg bg-purple-500 relative justify-self-center
+    transition-all duration-700 ease-in-out transform
+    ${generateStart ? "opacity-0 -translate-y-10 scale-95 pointer-events-none flex" : "opacity-100 translate-y-0 scale-100 flex"}
+  `}>Generate</button>
             </div>
-        </div>
+
+            <div className="w-30 h-10 bg-black mx-auto"></div>
+
+
+        </div >
     );
 }

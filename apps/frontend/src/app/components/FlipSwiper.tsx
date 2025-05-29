@@ -11,6 +11,7 @@ import React from 'react';
 
 interface ChildProps {
     setGenreIndex: React.Dispatch<React.SetStateAction<number>>;
+    generateStart: boolean;
 }
 
 type EmotionData = {
@@ -62,7 +63,7 @@ const topMusicGenres: Record<string, EmotionData> = {
 };
 
 
-const FlipSwiper: React.FC<ChildProps> = ({ setGenreIndex }: ChildProps) => {
+const FlipSwiper: React.FC<ChildProps> = ({ setGenreIndex, generateStart }: ChildProps) => {
 
 
 
@@ -82,6 +83,10 @@ const FlipSwiper: React.FC<ChildProps> = ({ setGenreIndex }: ChildProps) => {
                 // console.log('Current index [genre]:', swiper.activeIndex);
                 setGenreIndex(swiper.activeIndex)
             }}
+            className={`
+                transition-all duration-700 ease-in-out transform
+                ${generateStart ? "opacity-0 -translate-y-10 scale-95 pointer-events-none" : "opacity-100 translate-y-0 scale-100"}
+              `}
         >
             {Object.entries(topMusicGenres).map(([key, value]) => {
                 return (

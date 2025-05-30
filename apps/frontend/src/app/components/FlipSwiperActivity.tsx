@@ -24,6 +24,10 @@ const topActivities: Record<string, EmotionData> = {
         color: "bg-emerald-500",
         image: "/assets/reading-icon.webp"
     },
+    Nothing: {
+        color: "bg-gray-400",
+        image: "/assets/chill-out-icon.webp"
+    },
     Running: {
         color: "bg-orange-600",
         image: "/assets/running-icon.webp"
@@ -42,7 +46,7 @@ const topActivities: Record<string, EmotionData> = {
     },
     Drawing: {
         color: "bg-pink-400",
-        image: "/assets/drawing-iocn.webp"
+        image: "/assets/drawing-icon.webp"
     },
     Yoga: {
         color: "bg-teal-400",
@@ -62,13 +66,7 @@ const topActivities: Record<string, EmotionData> = {
     },
 };
 
-
-
 const FlipSwiperActivity: React.FC<ChildProps> = ({ setActivityIndex, generateStart }: ChildProps) => {
-
-
-
-
 
     // Object.entries(topMusicGenres).map(([key, value]) => console.log(`[${value.color}]`))
 

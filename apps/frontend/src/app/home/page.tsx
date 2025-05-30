@@ -100,13 +100,13 @@ const topMusicGenres: Record<string, EmotionData> = {
 };
 
 const topActivities: Record<string, EmotionData> = {
-    DoingNothing: {
-        color: "bg-gray-400",
-        image: "not-set"
-    },
     Reading: {
         color: "bg-emerald-500",
         image: "/assets/reading-icon.webp"
+    },
+    Nothing: {
+        color: "bg-gray-400",
+        image: "/assets/chill-out-icon.webp"
     },
     Running: {
         color: "bg-orange-600",

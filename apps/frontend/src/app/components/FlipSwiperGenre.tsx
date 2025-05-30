@@ -11,6 +11,7 @@ import React from 'react';
 
 interface ChildProps {
     setGenreIndex: React.Dispatch<React.SetStateAction<number>>;
+    generateStart: boolean;
 }
 
 type EmotionData = {
@@ -21,52 +22,47 @@ type EmotionData = {
 const topMusicGenres: Record<string, EmotionData> = {
     Pop: {
         color: "bg-red-300",
-        image: "/assets/pop-sticker.png"
+        image: "/assets/pop-sticker-icon.webp"
     },
     Rock: {
         color: "bg-orange-500",
-        image: "/assets/finger.png"
+        image: "/assets/finger-icon.webp"
     },
     HipHop: {
         color: "bg-orange-700",
-        image: "/assets/orange-hat.png"
+        image: "/assets/orange-hat-icon.webp"
     },
     Electronic: {
         color: "bg-violet-500",
-        image: "/assets/headset.png"
+        image: "/assets/headset-icon.webp"
     },
     Soul: {
         color: "bg-amber-400",
-        image: "/assets/heart.png"
+        image: "/assets/heart-icon.webp"
     },
     Country: {
         color: "bg-amber-600",
-        image: "/assets/guitar.png"
+        image: "/assets/guitar-icon.webp"
     },
     Jazz: {
         color: "bg-teal-600",
-        image: "/assets/buree.png"
+        image: "/assets/buree-icon.webp"
     },
     Classical: {
         color: "bg-red-900",
-        image: "/assets/vionyl.png"
+        image: "/assets/vionyl-icon.webp"
     },
     Reggae: {
         color: "bg-green-700",
-        image: "/assets/reggie.png"
+        image: "/assets/reggie-icon.webp"
     },
     Blues: {
         color: "bg-sky-600",
-        image: "/assets/blues.png"
+        image: "/assets/blues-icon.webp"
     },
 };
 
-
-const FlipSwiper: React.FC<ChildProps> = ({ setGenreIndex }: ChildProps) => {
-
-
-
-
+const FlipSwiperGenre: React.FC<ChildProps> = ({ setGenreIndex, generateStart }: ChildProps) => {
 
     // Object.entries(topMusicGenres).map(([key, value]) => console.log(`[${value.color}]`))
 
@@ -82,6 +78,10 @@ const FlipSwiper: React.FC<ChildProps> = ({ setGenreIndex }: ChildProps) => {
                 // console.log('Current index [genre]:', swiper.activeIndex);
                 setGenreIndex(swiper.activeIndex)
             }}
+            className={`
+                transition-all duration-700 ease-in-out transform
+                ${generateStart ? "opacity-0 -translate-y-10 scale-95 pointer-events-none" : "opacity-100 translate-y-0 scale-100"}
+              `}
         >
             {Object.entries(topMusicGenres).map(([key, value]) => {
                 return (
@@ -98,4 +98,4 @@ const FlipSwiper: React.FC<ChildProps> = ({ setGenreIndex }: ChildProps) => {
     );
 };
 
-export default FlipSwiper;
+export default FlipSwiperGenre;

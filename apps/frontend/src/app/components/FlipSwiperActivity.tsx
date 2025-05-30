@@ -10,7 +10,7 @@ import 'swiper/css/navigation';
 import React from 'react';
 
 interface ChildProps {
-    setGenreIndex: React.Dispatch<React.SetStateAction<number>>;
+    setActivityIndex: React.Dispatch<React.SetStateAction<number>>;
     generateStart: boolean;
 }
 
@@ -19,51 +19,52 @@ type EmotionData = {
     color: string;
 };
 
-const topMusicGenres: Record<string, EmotionData> = {
-    Pop: {
-        color: "bg-red-300",
-        image: "/assets/pop-sticker.png"
+const topActivities: Record<string, EmotionData> = {
+    Reading: {
+        color: "bg-emerald-500",
+        image: "/assets/reading-icon.webp"
     },
-    Rock: {
-        color: "bg-orange-500",
-        image: "/assets/finger.png"
+    Running: {
+        color: "bg-orange-600",
+        image: "/assets/running-icon.webp"
     },
-    HipHop: {
-        color: "bg-orange-700",
-        image: "/assets/orange-hat.png"
+    Cooking: {
+        color: "bg-amber-500",
+        image: "/assets/cooking-icon.webp"
     },
-    Electronic: {
-        color: "bg-violet-500",
-        image: "/assets/headset.png"
+    Traveling: {
+        color: "bg-blue-500",
+        image: "/assets/travel-icon.webp"
     },
-    Soul: {
-        color: "bg-amber-400",
-        image: "/assets/heart.png"
+    Gaming: {
+        color: "bg-purple-700",
+        image: "/assets/gaming-icon.webp"
     },
-    Country: {
-        color: "bg-amber-600",
-        image: "/assets/guitar.png"
+    Drawing: {
+        color: "bg-pink-400",
+        image: "/assets/drawing-iocn.webp"
     },
-    Jazz: {
-        color: "bg-teal-600",
-        image: "/assets/buree.png"
+    Yoga: {
+        color: "bg-teal-400",
+        image: "/assets/yoga-icon.webp"
     },
-    Classical: {
-        color: "bg-red-900",
-        image: "/assets/vionyl.png"
+    Biking: {
+        color: "bg-lime-500",
+        image: "/assets/biking-icon.webp"
     },
-    Reggae: {
-        color: "bg-green-700",
-        image: "/assets/reggie.png"
+    Dancing: {
+        color: "bg-rose-500",
+        image: "/assets/dancing-icon.webp"
     },
-    Blues: {
-        color: "bg-sky-600",
-        image: "/assets/blues.png"
+    Gardening: {
+        color: "bg-green-600",
+        image: "/assets/gardening-icon.webp"
     },
 };
 
 
-const FlipSwiper: React.FC<ChildProps> = ({ setGenreIndex, generateStart }: ChildProps) => {
+
+const FlipSwiperActivity: React.FC<ChildProps> = ({ setActivityIndex, generateStart }: ChildProps) => {
 
 
 
@@ -81,19 +82,19 @@ const FlipSwiper: React.FC<ChildProps> = ({ setGenreIndex, generateStart }: Chil
             modules={[EffectFlip, Pagination, Navigation]}
             onSlideChange={(swiper) => {
                 // console.log('Current index [genre]:', swiper.activeIndex);
-                setGenreIndex(swiper.activeIndex)
+                setActivityIndex(swiper.activeIndex)
             }}
             className={`
                 transition-all duration-700 ease-in-out transform
                 ${generateStart ? "opacity-0 -translate-y-10 scale-95 pointer-events-none" : "opacity-100 translate-y-0 scale-100"}
               `}
         >
-            {Object.entries(topMusicGenres).map(([key, value]) => {
+            {Object.entries(topActivities).map(([key, value]) => {
                 return (
                     <SwiperSlide key={key}>
                         <div className={`w-[80%] h-25 mx-auto text-white text-xl font-bold rounded-xl text-center flex gap-3 items-center justify-center border-4 border-white ${value.color}`}>
-                            <img className='w-15' src={value.image} />
                             <h1 className='text-4xl'>{key.toUpperCase()}</h1>
+                            <img className='w-15' src={value.image} />
                         </div>
 
                     </SwiperSlide>
@@ -103,4 +104,4 @@ const FlipSwiper: React.FC<ChildProps> = ({ setGenreIndex, generateStart }: Chil
     );
 };
 
-export default FlipSwiper;
+export default FlipSwiperActivity;

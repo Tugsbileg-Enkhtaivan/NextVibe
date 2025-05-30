@@ -8,8 +8,9 @@ import "swiper/css/effect-cards";
 import "swiper/css/pagination";
 
 import Image from "next/image";
-import FlipSwiper from "../components/FlipSwiper";
-import { useEffect, useRef, useState } from "react";
+import { SetStateAction, useRef, useState } from "react";
+import FlipSwiperGenre from "../components/FlipSwiperGenre";
+import FlipSwiperActivity from "../components/FlipSwiperActivity";
 
 type EmotionData = {
     image: string;
@@ -98,15 +99,62 @@ const topMusicGenres: Record<string, EmotionData> = {
     },
 };
 
-const sticker = Object.entries(topMusicGenres);
+const topActivities: Record<string, EmotionData> = {
+    Reading: {
+        color: "bg-emerald-500",
+        image: "/assets/reading-icon.webp"
+    },
+    Running: {
+        color: "bg-orange-600",
+        image: "/assets/running-icon.webp"
+    },
+    Cooking: {
+        color: "bg-amber-500",
+        image: "/assets/cooking-icon.webp"
+    },
+    Traveling: {
+        color: "bg-blue-500",
+        image: "/assets/travel-icon.webp"
+    },
+    Gaming: {
+        color: "bg-purple-700",
+        image: "/assets/gaming-icon.webp"
+    },
+    Drawing: {
+        color: "bg-pink-400",
+        image: "/assets/drawing-iocn.webp"
+    },
+    Yoga: {
+        color: "bg-teal-400",
+        image: "/assets/yoga-icon.webp"
+    },
+    Biking: {
+        color: "bg-lime-500",
+        image: "/assets/biking-icon.webp"
+    },
+    Dancing: {
+        color: "bg-rose-500",
+        image: "/assets/dancing-icon.webp"
+    },
+    Gardening: {
+        color: "bg-green-600",
+        image: "/assets/gardening-icon.webp"
+    },
+};
+
+
+const stickerGenre = Object.entries(topMusicGenres);
+const stickerActivity = Object.entries(topActivities);
 
 
 export default function CardCarousel() {
     const swiperRef = useRef<SwiperClass | null>(null);
     const [index, setIndex] = useState(0);
     const [genreIndex, setGenreIndex] = useState(0);
+    const [activityIndex, setActivityIndex] = useState(0);
     const [selectedMood, setSelectedMood] = useState("");
     const [selectedGenre, setSelectedGenre] = useState("");
+    const [selectedActivity, setSelectedActivity] = useState("");
     const [generateStart, setGenerateStart] = useState(false);
 
     const colors = Object.entries(data)
@@ -128,6 +176,7 @@ export default function CardCarousel() {
     function generateMusic() {
         setSelectedMood(Object.entries(data)[index][0]);
         setSelectedGenre(Object.entries(topMusicGenres)[genreIndex][0]);
+        setSelectedActivity(Object.entries(topActivities)[activityIndex][0]);
         // console.log(selectedGenre, selectedMood)
         setGenerateStart(true);
     }
@@ -135,16 +184,25 @@ export default function CardCarousel() {
     return (
         <div className="max-w-[430px] w-full min-h-screen mx-auto space-y-4 bg-black py-6 bg-center bg-cover overflow-hidden pt-12 relative" style={{ backgroundImage: `${colors[index][1].color}` }}>
             <div className="w-full min-h-screen h-full absolute [&>*]:absolute">
-                <img className="w-[20%] top-[-15%] left-[40%] rotate-50" src={`${sticker[genreIndex][1].image}`}></img>
-                <img className="w-[25%] bottom-[56%] right-[-7%] rotate-20" src={`${sticker[genreIndex][1].image}`}></img>
-                <img className="w-[28%] top-[-7%] left-[1%] rotate-[-20deg]" src={`${sticker[genreIndex][1].image}`}></img>
-                <img className="w-[30%] top-[-14%] right-[-5%] rotate-220" src={`${sticker[genreIndex][1].image}`}></img>
-                <img className="w-[15%] top-[20%] left-[-3%] rotate-30" src={`${sticker[genreIndex][1].image}`}></img>
-                <img className="w-[30%] top-[37%] left-[-10%] rotate-[-35deg]" src={`${sticker[genreIndex][1].image}`}></img>
-                <img className="w-[10%] top-[10%] right-[-3%] rotate-[-20deg]" src={`${sticker[genreIndex][1].image}`}></img>
-                <img className="w-[60%] bottom-[23%] right-[-10%] rotate-130" src={`${sticker[genreIndex][1].image}`}></img>
-                <img className="w-[25%] bottom-[15%] left-[7%] rotate-40" src={`${sticker[genreIndex][1].image}`}></img>
-                <img className="w-[20%] bottom-[15%] right-[35%] rotate-[-30deg]" src={`${sticker[genreIndex][1].image}`}></img>
+                <img className="w-[20%] top-[-15%] left-[40%] rotate-50" src={`${stickerGenre[genreIndex][1].image}`}></img>
+                <img className="w-[25%] bottom-[56%] right-[-7%] rotate-20" src={`${stickerGenre[genreIndex][1].image}`}></img>
+                <img className="w-[28%] top-[-7%] left-[1%] rotate-[-20deg]" src={`${stickerGenre[genreIndex][1].image}`}></img>
+                <img className="w-[30%] top-[-14%] right-[-5%] rotate-220" src={`${stickerGenre[genreIndex][1].image}`}></img>
+                <img className="w-[15%] top-[20%] left-[-3%] rotate-30" src={`${stickerGenre[genreIndex][1].image}`}></img>
+                <img className="w-[10%] top-[10%] right-[-3%] rotate-[-20deg]" src={`${stickerGenre[genreIndex][1].image}`}></img>
+                <img className="w-[60%] bottom-[23%] right-[-10%] rotate-130" src={`${stickerGenre[genreIndex][1].image}`}></img>
+                <img className="w-[25%] bottom-[15%] left-[7%] rotate-40" src={`${stickerGenre[genreIndex][1].image}`}></img>
+                <img className="w-[20%] bottom-[10%] right-[10%] rotate-[35deg]" src={`${stickerGenre[genreIndex][1].image}`}></img>
+                <img className="w-[20%] bottom-[5%] left-[30%] rotate-[-45deg]" src={`${stickerGenre[genreIndex][1].image}`}></img>
+
+
+                <img className="w-[30%] top-[37%] left-[-10%] rotate-[-35deg]" src={`${stickerActivity[activityIndex][1].image}`}></img>
+                <img className="w-[20%] bottom-[15%] right-[35%] rotate-[-30deg]" src={`${stickerActivity[activityIndex][1].image}`}></img>
+                <img className="w-[15%] top-[-5%] left-[43%] rotate-[25deg]" src={`${stickerActivity[activityIndex][1].image}`}></img>
+                <img className="w-[16%] top-[4%] right-[8%] rotate-[-35deg]" src={`${stickerActivity[activityIndex][1].image}`}></img>
+                <img className="w-[7%] top-[23%] right-[2%] rotate-[15deg]" src={`${stickerActivity[activityIndex][1].image}`}></img>
+                <img className="w-[8%] bottom-[36%] left-[2%] rotate-[-220deg]" src={`${stickerActivity[activityIndex][1].image}`}></img>
+                <img className="w-[30%] bottom-[0%] left-[-10%] rotate-[-35deg]" src={`${stickerActivity[activityIndex][1].image}`}></img>
             </div>
             <div className={`space-y-4 ${generateStart ? "hidden" : "block"}`}>
                 <h1 className={`relative text-white text-3xl text-center font-bold z-2
@@ -189,7 +247,8 @@ export default function CardCarousel() {
                     ))}
                 </Swiper>
 
-                <FlipSwiper setGenreIndex={setGenreIndex} generateStart={generateStart} />
+                <FlipSwiperGenre setGenreIndex={setGenreIndex} generateStart={generateStart} />
+                <FlipSwiperActivity setActivityIndex={setActivityIndex} generateStart={generateStart} />
                 <button
                     onClick={generateMusic}
                     className={`
@@ -199,8 +258,7 @@ export default function CardCarousel() {
   `}>Generate</button>
             </div>
 
-            <div className="w-30 h-10 bg-black mx-auto"></div>
-
+            {/* <div className="w-30 h-10 bg-black mx-auto"></div> */}
 
         </div >
     );

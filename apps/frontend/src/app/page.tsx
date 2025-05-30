@@ -59,7 +59,7 @@ export default function HomePage() {
 
   return (
     <main className="p-8 max-w-xl mx-auto">
-      <SpotifyAuth />
+      {/* <SpotifyAuth /> */}
       <h1 className="text-2xl font-bold mb-4">Select your mood</h1>
       <SelectableGroup options={moods} selected={mood} onSelect={setMood} />
 

@@ -20,7 +20,6 @@ import {
 } from "../services/userService";
 import { MoodType, RecommendationType } from "@prisma/client";
 
-// Type definitions
 interface SpotifyImage {
   url: string;
   height: number;
@@ -57,7 +56,6 @@ interface SpotifyTrack {
   external_urls: { spotify: string };
 }
 
-// Type guards
 function isFullAlbum(album: any): album is SpotifyAlbumFull {
   return album && 'images' in album && 'release_date' in album;
 }
@@ -86,18 +84,18 @@ export const getAISongSuggestions = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { mood, genre } = req.query as { mood: string; genre: string };
+  const { mood, genre, activity } = req.query as { mood: string; genre: string; activity: string; };
   const userId = req.user?.id || "anonymous";
 
-  if (!mood || !genre) {
-    res.status(400).json({ error: "Mood and genre are required parameters" });
+  if (!mood || !genre || !activity) {
+    res.status(400).json({ error: "Mood, genre, and activity are required parameters" });
     return;
   }
 
   try {
     await authenticateSpotify();
 
-    const cacheKey = `${userId}-${mood}-${genre}`;
+    const cacheKey = `${userId}-${mood}-${genre}-${activity}`;
     const cachedRecommendations = userRecommendationCache.get(cacheKey);
 
     const shouldUseCache =
@@ -140,12 +138,22 @@ export const getAISongSuggestions = async (
     const prompt = `
 You are a music recommendation engine for Spotify.
 
-Suggest 5 popular SONGS and 5 notable ALBUMS that are definitely available on Spotify based on the following:
+Suggest 5 popular SONGS and 5 notable ALBUMS that are definitely available on Spotify based on:
 
 Mood: ${mood}
 Genre: ${genre}
+Activity: ${activity}
 
-Important: Suggest a diverse mix of artists and time periods. Include some lesser-known gems alongside popular choices.
+Consider the activity context:
+- If "workout" or "gym": energetic, motivating tracks with strong beats
+- If "study" or "work": focus-friendly, minimal lyrics, ambient sounds
+- If "party": danceable, crowd-pleasers, high energy
+- If "relax" or "chill": calming, soothing, low tempo
+- If "commute" or "travel": engaging but not overwhelming
+- If "cooking": upbeat but not distracting
+- If "sleep": very calm, minimal, peaceful
+
+Important: Match the energy and tempo to the activity. Include diverse artists and time periods.
 
 Only output in the following format — no extra comments or explanations:
 
@@ -274,7 +282,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
             albumId: track.album.id,
             albumCover: track.album.images?.[0]?.url || null,
             previewUrl: track.preview_url,
-            spotifyUrl: track.external_urls?.spotify || null,
+            spotifyUrl: track.external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
             youtubeData,
           };
         } catch (error) {
@@ -325,7 +333,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
             artistName: album.artists[0].name,
             albumId: album.id,
             albumCover,
-            spotifyUrl: album.external_urls?.spotify || null,
+            spotifyUrl: album.external_urls?.spotify || `https://open.spotify.com/album/${album.id}`,
             releaseDate,
           };
         } catch (error) {
@@ -361,7 +369,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
           artistName: album.artists[0].name,
           albumId: album.id,
           albumCover,
-          spotifyUrl: album.external_urls?.spotify || null,
+          spotifyUrl: album.external_urls?.spotify || `https://open.spotify.com/album/${album.id}`,
           releaseDate,
         };
       });
@@ -411,7 +419,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
             albumId: track.album.id,
             albumCover: track.album.images?.[0]?.url || null,
             previewUrl: track.preview_url,
-            spotifyUrl: track.external_urls?.spotify || null,
+            spotifyUrl: track.external_urls?.spotify || `https://open.spotify.com/track/${track.id}`,
             youtubeData,
           };
         })
@@ -425,14 +433,12 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       finalSongs = validVerifiedSongs.slice(0, 5);
     }
 
-    // Cache the results
     userRecommendationCache.set(cacheKey, {
       timestamp: Date.now(),
       songs: finalSongs,
       albums: finalAlbums,
     });
 
-    // Only save to database if user is authenticated and not anonymous
     if (userId !== "anonymous") {
       try {
         await saveUserRecommendationHistory(userId, {
@@ -465,7 +471,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
         });
       } catch (error) {
         console.warn("Failed to save recommendation history:", error);
-        // Continue without saving to database
       }
     }
 

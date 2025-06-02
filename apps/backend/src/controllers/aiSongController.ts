@@ -18,7 +18,7 @@ import {
   getUserFavorites,
   removeFromUserFavorites,
 } from "../services/userService";
-import { MoodType, RecommendationType } from "@prisma/client";
+import { MoodType, RecommendationType, ActivityType } from "@prisma/client";
 
 interface SpotifyImage {
   url: string;
@@ -78,6 +78,11 @@ const CACHE_EXPIRATION = 6 * 60 * 60 * 1000;
 const convertToMoodType = (mood: string): MoodType => {
   const moodUpper = mood.toUpperCase() as keyof typeof MoodType;
   return MoodType[moodUpper] || MoodType.HAPPY;
+};
+
+const convertToActivityType = (activity: string): ActivityType => {
+  const activityUpper = activity.toUpperCase() as keyof typeof ActivityType;
+  return ActivityType[activityUpper] || ActivityType.WORKOUT;
 };
 
 export const getAISongSuggestions = async (
@@ -444,10 +449,11 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
         await saveUserRecommendationHistory(userId, {
           type: RecommendationType.MOOD_BASED,
           mood: convertToMoodType(mood),
+          activity: convertToActivityType(activity),
           genres: [genre],
           seedTracks: [],
           seedArtists: [],
-          parameters: { mood, genre },
+          parameters: { mood, genre, activity },
           tracks: finalSongs.map((song, index) => ({
             trackId: song.songId,
             position: index,

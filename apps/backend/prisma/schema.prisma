@@ -1,3 +1,5 @@
+// Updated Prisma schema file with activity support
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,18 +10,22 @@ datasource db {
 }
 
 model User {
-  id               String             @id @default(nanoid())
-  email            String             @unique
-  username         String             @unique
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  favorites        Favorite[]
-  listeningHistory ListeningHistory[]
-  moodEntries      MoodEntry[]
-  playlists        Playlist[]
-  profile          Profile?
-  recommendations  Recommendation[]
-  spotifyAccount   SpotifyAccount?
+  id        String   @id @default(nanoid())
+  email     String   @unique
+  username  String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  profile             Profile?
+  spotifyAccount      SpotifyAccount?
+  listeningHistory    ListeningHistory[]
+  recommendations     Recommendation[]
+  favorites           Favorite[]
+  playlists           Playlist[]
+  moodEntries         MoodEntry[]
+  activityEntries     ActivityEntry[]
+  moodActivityEntries MoodActivityEntry[]
 
   @@map("users")
 }
@@ -33,7 +39,8 @@ model Profile {
   bio       String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("profiles")
 }
@@ -41,7 +48,7 @@ model Profile {
 model SpotifyAccount {
   id           String   @id @default(cuid())
   userId       String   @unique
-  spotifyId    String   @unique
+  spotifyId    String   @unique // Spotify user ID
   displayName  String?
   email        String?
   country      String?
@@ -50,29 +57,32 @@ model SpotifyAccount {
   expiresAt    DateTime
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("spotify_accounts")
 }
 
 model ListeningHistory {
-  id          String   @id @default(nanoid())
-  userId      String
-  trackId     String
-  albumId     String?
-  artistIds   String[]
-  platform    Platform @default(SPOTIFY)
-  playedAt    DateTime
-  msPlayed    Int?
-  context     String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(nanoid())
+  userId    String
+  trackId   String
+  albumId   String?
+  artistIds String[]
+  platform  Platform @default(SPOTIFY)
+  playedAt  DateTime
+  msPlayed  Int?
+  context   String? // Playlist, album, artist, etc.
+  createdAt DateTime @default(now())
+
   trackName   String
   artistNames String[]
   albumName   String?
   imageUrl    String?
   previewUrl  String?
   duration    Int?
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, playedAt])
   @@index([trackId])
@@ -84,14 +94,49 @@ model MoodEntry {
   userId      String
   mood        MoodType
   energy      EnergyLevel
+  valence     ValenceLevel // Positive/Negative emotion
+  genres      String[]
+  description String?
+  createdAt   DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("mood_entries")
+}
+
+model ActivityEntry {
+  id        String       @id @default(nanoid())
+  userId    String
+  activity  ActivityType
+  duration  Int? // Duration in minutes
+  energy    EnergyLevel
+  context   String? // Additional context
+  location  String? // Where the activity took place
+  createdAt DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("activity_entries")
+}
+
+model MoodActivityEntry {
+  id          String       @id @default(nanoid())
+  userId      String
+  mood        MoodType
+  activity    ActivityType
+  energy      EnergyLevel
   valence     ValenceLevel
   genres      String[]
   description String?
   createdAt   DateTime     @default(now())
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
-  @@map("mood_entries")
+  @@index([userId, mood, activity])
+  @@map("mood_activity_entries")
 }
 
 model Recommendation {
@@ -99,6 +144,7 @@ model Recommendation {
   userId      String
   type        RecommendationType
   mood        MoodType?
+  activity    ActivityType? // Added activity support
   energy      EnergyLevel?
   valence     ValenceLevel?
   genres      String[]
@@ -106,59 +152,68 @@ model Recommendation {
   seedArtists String[]
   parameters  Json?
   createdAt   DateTime           @default(now())
-  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  albums      RecommendedAlbum[]
-  tracks      RecommendedTrack[]
+
+  tracks RecommendedTrack[]
+  albums RecommendedAlbum[]
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+  @@index([userId, mood, activity])
   @@map("recommendations")
 }
 
 model RecommendedTrack {
-  id               String         @id @default(nanoid())
+  id               String @id @default(nanoid())
   recommendationId String
   trackId          String
   position         Int
-  name             String
-  artistNames      String[]
-  albumName        String?
-  imageUrl         String?
-  previewUrl       String?
-  duration         Int?
-  popularity       Int?
-  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+
+  name        String
+  artistNames String[]
+  albumName   String?
+  imageUrl    String?
+  previewUrl  String?
+  duration    Int?
+  popularity  Int?
+
+  recommendation Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
 
   @@unique([recommendationId, position])
   @@map("recommended_tracks")
 }
 
 model RecommendedAlbum {
-  id               String         @id @default(nanoid())
+  id               String @id @default(nanoid())
   recommendationId String
   albumId          String
   position         Int
-  name             String
-  artistNames      String[]
-  imageUrl         String?
-  releaseDate      String?
-  totalTracks      Int?
-  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+
+  name        String
+  artistNames String[]
+  imageUrl    String?
+  releaseDate String?
+  totalTracks Int?
+
+  recommendation Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
 
   @@unique([recommendationId, position])
   @@map("recommended_albums")
 }
 
 model Favorite {
-  id          String       @id @default(nanoid())
-  userId      String
-  type        FavoriteType
-  itemId      String
-  addedAt     DateTime     @default(now())
+  id      String       @id @default(nanoid())
+  userId  String
+  type    FavoriteType
+  itemId  String
+  addedAt DateTime     @default(now())
+
   name        String
   artistNames String[]
   imageUrl    String?
   metadata    Json?
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, itemId, type])
   @@index([userId, type])
@@ -166,35 +221,38 @@ model Favorite {
 }
 
 model Playlist {
-  id          String          @id @default(nanoid())
+  id          String   @id @default(nanoid())
   userId      String
   name        String
   description String?
-  isPublic    Boolean         @default(false)
+  isPublic    Boolean  @default(false)
   imageUrl    String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  tracks      PlaylistTrack[]
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tracks PlaylistTrack[]
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("playlists")
 }
 
 model PlaylistTrack {
-  id          String   @id @default(nanoid())
-  playlistId  String
-  trackId     String
-  position    Int
-  addedAt     DateTime @default(now())
-  addedBy     String
+  id         String   @id @default(nanoid())
+  playlistId String
+  trackId    String
+  position   Int
+  addedAt    DateTime @default(now())
+  addedBy    String
+
   name        String
   artistNames String[]
   albumName   String?
   imageUrl    String?
   previewUrl  String?
   duration    Int?
-  playlist    Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
 
   @@unique([playlistId, position])
   @@index([trackId])
@@ -202,8 +260,8 @@ model PlaylistTrack {
 }
 
 enum Platform {
-  YOUTUBE
   SPOTIFY
+  YOUTUBE
   APPLE_MUSIC
   SOUNDCLOUD
 }
@@ -221,6 +279,33 @@ enum MoodType {
   CHILL
   MELANCHOLIC
   VERY_HAPPY
+  EXCITED
+  RELAXED
+  PEACEFUL
+  UPBEAT
+}
+
+enum ActivityType {
+  WORKOUT
+  STUDY
+  WORK
+  PARTY
+  RELAX
+  COMMUTE
+  COOKING
+  CLEANING
+  SLEEP
+  MEDITATION
+  READING
+  GAMING
+  SOCIALIZING
+  TRAVELING
+  SHOPPING
+  DATING
+  DANCING
+  RUNNING
+  WALKING
+  GYM
 }
 
 enum EnergyLevel {
@@ -238,6 +323,7 @@ enum ValenceLevel {
 enum RecommendationType {
   MOOD_BASED
   ACTIVITY_BASED
+  MOOD_ACTIVITY_BASED
   SIMILAR_TO_TRACK
   SIMILAR_TO_ARTIST
   DISCOVERY

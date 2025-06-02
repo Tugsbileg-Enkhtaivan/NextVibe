@@ -1,4 +1,4 @@
-import { PrismaClient, MoodType, FavoriteType, RecommendationType, EnergyLevel, ValenceLevel } from '@prisma/client';
+import { PrismaClient, MoodType, FavoriteType, RecommendationType, EnergyLevel, ValenceLevel, ActivityType } from '@prisma/client';
 import { searchTracks, searchAlbums } from '../services/spotifyService';
 import { isTrackSearchResponse, isAlbumSearchResponse } from '../utils/spotifyUtils';
 
@@ -9,6 +9,7 @@ interface RecommendationData {
   mood?: MoodType;
   energy?: EnergyLevel;
   valence?: ValenceLevel;
+  activity?: ActivityType;
   genres: string[];
   seedTracks?: string[];
   seedArtists?: string[];
@@ -72,6 +73,7 @@ export const saveUserRecommendationHistory = async (
         energy: recommendation.energy,
         valence: recommendation.valence,
         genres: recommendation.genres,
+        activity: recommendation.activity,
         seedTracks: recommendation.seedTracks || [],
         seedArtists: recommendation.seedArtists || [],
         parameters: recommendation.parameters,

@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 
-type Mood = 'happy' | 'sad' | 'energetic' | 'calm' | 'angry' | 'romantic' | 'focused' | 'chill' | 'melancholic' | 'neutral' | 'very_happy' | 'devil' | 'bored';
+type Mood = 'happy' | 'sad' | 'energetic' | 'calm' | 'angry' | 'romantic' | 'focused' | 'melancholic' | 'very_happy' | 'devil' | 'bored';
 
 interface MoodData {
     date: string; // ISO format, e.g. "2022-05-20"
@@ -12,19 +12,17 @@ interface MoodData {
 }
 
 const moodFaces: Record<Mood, string> = {
-    happy: '/assets/happy.png',
-    angry: '/assets/angry.png',
-    melancholic: '/assets/crying.png',
-    very_happy: '/assets/gold-star.png',
-    energetic: '/assets/energetic.png',
-    calm: '/assets/calm.png',
-    romantic: '/assets/romantic.png',
-    focused: '/assets/focused.png',
-    chill: '',
-    sad: '/assets/sad.png',
-    neutral: '',
-    devil: '/assets/devil.png',
-    bored: '/assets/bored.png'
+    happy: '/assets/happy-calendar.webp',
+    angry: '/assets/angry-calendar.webp',
+    melancholic: '/assets/crying-calendar.webp',
+    very_happy: '/assets/gold-star-calendar.webp',
+    energetic: '/assets/energetic-calendar.webp',
+    calm: '/assets/calm-calendar.webp',
+    romantic: '/assets/romantic-calendar.webp',
+    focused: '/assets/focused-calendar.webp',
+    sad: '/assets/sad-calendar.webp',
+    devil: '/assets/devil-calendar.webp',
+    bored: '/assets/bored-calendar.webp'
 };
 
 const MoodCalendar: React.FC = () => {
@@ -54,11 +52,23 @@ const MoodCalendar: React.FC = () => {
         return moodData.find(m => m.date === iso);
     };
 
+    // const [currentMonth, setCurrentMonth] = useState(null);
+
+    // const handleActiveStartDateChange = ({ activeStartDate }) => {
+    //   const month = activeStartDate.getMonth(); // 0 = January, 11 = December
+    //   setCurrentMonth({ month: month + 1,}); // +1 to make it human-readable
+    // };
+  
+    // console.log(currentMonth, "month")
+
 
     return (
-        <div className='w-full'>
+        <div className='w-full z-10 mt-10 pt-10'  style={{background: "linear-gradient(135deg, #FFD54F 0%, #FFB300 50%, #FF6F00 100%)"}} >
             <Calendar className="mx-auto p-2 rounded-2xl bg-black"
+            // onActiveStartDateChange={handleActiveStartDateChange}
                 onClickDay={(value, event) => alert(value.toDateString())}
+                // onActiveStartDateChange={}
+                // navigationLabel={({ date, label, locale, view }) => alert(`Current view: ${view}, date: ${date.toLocaleDateString(locale)}`)}
                 tileClassName=""
                 tileContent={({ date, view }) => {
                     if (view !== 'month') return null;

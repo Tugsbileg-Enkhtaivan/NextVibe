@@ -8,6 +8,37 @@ type Result = {
     genre: string
 }
 
+interface Song {
+    songName?: string;
+    artistName?: string;
+    albumName?: string;
+    albumCover?: string | null;
+    songId?: string;
+    previewUrl?: string | null;
+    spotifyUrl?: string;
+    youtubeData?: {
+      videoId: string;
+      title: string;
+      thumbnail: string;
+    } | null;
+  }
+  
+  interface Album {
+    albumName?: string;
+    artistName?: string;
+    albumCover?: string | null;
+    albumId?: string;
+    spotifyUrl?: string;
+    releaseDate?: string | null;
+  }
+  
+
+interface RecommendationsResponse {
+    songs?: Song[];
+    albums?: Album[];
+    fromCache?: boolean;
+  }
+
 export default function SlotMachine() {
     // Define our reels
     const moods = [
@@ -99,7 +130,7 @@ export default function SlotMachine() {
         try {
             // setLoading(true);
 
-            const res = await api.get('/recommendations', {
+            const res = await api.get<RecommendationsResponse>('/recommendations', {
                 params: {
                     mood,
                     genre,

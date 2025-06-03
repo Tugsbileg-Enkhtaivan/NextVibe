@@ -13,6 +13,7 @@ import FlipSwiperGenre from "../components/FlipSwiperGenre";
 import FlipSwiperActivity from "../components/FlipSwiperActivity";
 import api from "../utils/axios";
 import { Music2, Heart, Play } from "lucide-react";
+import Header from "../components/Header";
 
 type EmotionData = {
   image: string;
@@ -345,6 +346,7 @@ export default function CardCarousel() {
       className="max-w-[430px] w-full min-h-screen mx-auto space-y-4 bg-black py-6 bg-center bg-cover overflow-hidden pt-12 relative"
       style={{ backgroundImage: `${colors[index][1].color}` }}
     >
+      <Header />
       <div className="w-full min-h-screen h-full absolute [&>*]:absolute">
         <img
           className="w-[20%] top-[-15%] left-[40%] rotate-50"

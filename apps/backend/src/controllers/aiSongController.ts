@@ -273,6 +273,8 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
                 videoId: youtubeResults[0].id.videoId,
                 title: youtubeResults[0].snippet.title,
                 thumbnail: youtubeResults[0].snippet.thumbnails.high.url,
+                // Add the full YouTube URL
+                url: `https://www.youtube.com/watch?v=${youtubeResults[0].id.videoId}`
               };
             }
           } catch (error) {
@@ -503,18 +505,20 @@ export const addToFavorites = async (
     return;
   }
 
-  if (!itemId || !itemType || !["song", "album"].includes(itemType)) {
+  const mappedItemType = itemType === 'song' ? 'track' : itemType;
+
+  if (!itemId || !mappedItemType || !["track", "album", "artist", "playlist"].includes(mappedItemType)) {
     res
       .status(400)
       .json({
-        error: "Invalid request. Required: itemId and itemType (song or album)",
+        error: "Invalid request. Required: itemId and itemType (song, album, artist, or playlist)",
       });
     return;
   }
 
   try {
-    await addToUserFavorites(userId, itemId, itemType);
-    res.json({ success: true });
+    await addToUserFavorites(userId, itemId, mappedItemType);
+    res.json({ success: true, message: "Added to favorites" });
   } catch (error) {
     console.error("[ADD TO FAVORITES ERROR]", error);
     res.status(500).json({ error: "Failed to add item to favorites" });

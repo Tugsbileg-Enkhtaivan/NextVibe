@@ -16,6 +16,7 @@
     },
     "dependencies": {
         "@clerk/express": "^1.5.0",
+        "@tanstack/react-query": "^5.79.2",
         "axios": "^1.9.0",
         "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",

@@ -18,7 +18,7 @@ const Header = () => {
                 <UserButton />
             </SignedIn>
 
-            {/* <Menu /> */}
+            <Menu />
 
         </header>
     )

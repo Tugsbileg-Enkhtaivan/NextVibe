@@ -201,6 +201,10 @@ const MusicCard = ({
   type = "song",
   previewUrl,
   spotifyUrl,
+  youtubeData,
+  itemId,
+  onFavoriteToggle,
+  isFavorited
 }: {
   title: string;
   artist: string;
@@ -209,67 +213,125 @@ const MusicCard = ({
   type?: "song" | "album";
   previewUrl?: string | null;
   spotifyUrl?: string;
-}) => (
-  <div className={`rounded-xl p-4 shadow-2xl hover:shadow-md transition-shadow duration-200 bg-[#F5F5F5]`}>
-    <div className="flex gap-4 items-center">
-      <div className="relative">
-        {cover ? (
-          <img
-            src={cover}
-            alt={title}
-            className="w-16 h-16 rounded-lg object-cover"
-          />
-        ) : (
-          <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
-            <Music2 className="w-8 h-8 text-white" />
-          </div>
-        )}
-        {previewUrl && (
-          <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm">
-            <Play className="w-3 h-3 text-purple-600" />
-          </div>
-        )}
-      </div>
+  youtubeData?: {
+    videoId: string;
+    title: string;
+    thumbnail: string;
+  } | null;
+  itemId?: string;
+  onFavoriteToggle?: (itemId: string, itemType: string, isFavorited: boolean) => void;
+  isFavorited?: boolean;
+}) => {
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  
+  const youtubeUrl = youtubeData?.videoId 
+    ? `https://www.youtube.com/watch?v=${youtubeData.videoId}`
+    : null;
 
-      <div className="flex-1 min-w-0">
-        <h3 className="font-semibold text-gray-900 truncate">{title}</h3>
-        <p className="text-purple-600 text-sm truncate">{artist}</p>
-        {album && type === "song" && (
-          <p className="text-gray-500 text-xs truncate">{album}</p>
-        )}
+  const handleYouTubePlay = () => {
+    if (youtubeUrl) {
+      window.open(youtubeUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
 
-      </div>
+  const handleFavoriteClick = async () => {
+    if (!itemId || !onFavoriteToggle) return;
+    
+    setFavoriteLoading(true);
+    try {
+      await onFavoriteToggle(itemId, type, isFavorited || false);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
 
-      <div className="flex flex-col items-center">
-        <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-          <Heart className="w-5 h-5 text-gray-400 hover:text-red-500" />
-        </button><div className="flex gap-2 mt-2">
-          {spotifyUrl && (
-            <a
-              href={spotifyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs bg-green-500 text-black px-2 py-1 rounded-full hover:bg-green-200 transition-colors"
-            >
-              Spotify
-            </a>
+  return (
+    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
+      <div className="flex gap-4 items-center">
+        <div className="relative">
+          {cover ? (
+            <img
+              src={cover}
+              alt={title}
+              className="w-16 h-16 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
+              <Music2 className="w-8 h-8 text-white" />
+            </div>
           )}
-          {previewUrl && (
-            <button
-              onClick={() => {
-                const audio = new Audio(previewUrl);
-                audio.play();
-              }}
-              className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full hover:bg-purple-200 transition-colors"
-            >
-              Preview
-            </button>
+          {(previewUrl || youtubeUrl) && (
+            <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm">
+              <Play className="w-3 h-3 text-purple-600" />
+            </div>
           )}
         </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-900 truncate">{title}</h3>
+          <p className="text-purple-600 text-sm truncate">{artist}</p>
+          {album && type === "song" && (
+            <p className="text-gray-500 text-xs truncate">{album}</p>
+          )}
+          <div className="flex gap-2 mt-2 flex-wrap">
+            {spotifyUrl && (
+              <a 
+                href={spotifyUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full hover:bg-green-200 transition-colors"
+              >
+                Spotify
+              </a>
+            )}
+            {previewUrl && (
+              <button 
+                onClick={() => {
+                  const audio = new Audio(previewUrl);
+                  audio.play().catch(e => console.warn('Preview play failed:', e));
+                }}
+                className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full hover:bg-purple-200 transition-colors"
+              >
+                Preview
+              </button>
+            )}
+            {type === "song" && youtubeUrl && (
+              <button 
+                onClick={handleYouTubePlay}
+                className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full hover:bg-red-200 transition-colors flex items-center gap-1"
+              >
+                <div className="w-3 h-3" />
+                YouTube
+              </button>
+            )}
+          </div>
+        </div>
+        <button 
+          onClick={handleFavoriteClick}
+          disabled={favoriteLoading}
+          className={`p-2 rounded-full transition-all duration-200 ${
+            favoriteLoading 
+              ? 'opacity-50 cursor-not-allowed' 
+              : 'hover:bg-gray-100'
+          }`}
+        >
+          {favoriteLoading ? (
+            <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Heart 
+              className={`w-5 h-5 transition-colors ${
+                isFavorited 
+                  ? 'text-red-500 fill-red-500' 
+                  : 'text-gray-400 hover:text-red-500'
+              }`} 
+            />
+          )}
+        </button>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default function CardCarousel() {
   const swiperRef = useRef<SwiperClass | null>(null);
@@ -281,6 +343,8 @@ export default function CardCarousel() {
   const [fromCache, setFromCache] = useState(false);
   const [songs, setSongs] = useState<Song[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  
 
   const colors = Object.entries(data);
 
@@ -289,7 +353,6 @@ export default function CardCarousel() {
   };
 
   const handleSubmit = async () => {
-    // Get current values directly from indices instead of state
     const currentMood = Object.entries(data)[index][0];
     const currentGenre = Object.entries(topMusicGenres)[genreIndex][0];
     const currentActivity = Object.entries(topActivities)[activityIndex][0];
@@ -300,7 +363,6 @@ export default function CardCarousel() {
       currentActivity,
     });
 
-    // Validate that all fields are selected (they should always be since we have default indices)
     if (!currentMood || !currentGenre || !currentActivity) {
       alert("Please select a mood, genre, and activity");
       return;
@@ -341,6 +403,28 @@ export default function CardCarousel() {
       setLoading(false);
     }
   };
+
+    const handleFavoriteToggle = async (itemId: string, itemType: string, isFavorited: boolean) => {
+      try {
+        if (isFavorited) {
+          await api.delete(`/api/ai-song/favorites/${itemId}`);
+          setFavorites(prev => {
+            const newFavorites = new Set(prev);
+            newFavorites.delete(itemId);
+            return newFavorites;
+          });
+        } else {
+          await api.post("/api/ai-song/favorites", {
+            itemId,
+            itemType
+          });
+          setFavorites(prev => new Set([...prev, itemId]));
+        }
+      } catch (error) {
+        console.error('Error toggling favorite:', error);
+        alert('Failed to update favorites. Please try again.');
+      }
+    };
 
   return (
     <div
@@ -438,7 +522,6 @@ export default function CardCarousel() {
           onSwiper={(swiper) => {
             swiperRef.current = swiper;
 
-            // Register event listener for activeIndexChange
             swiper.on("activeIndexChange", () => {
               setIndex(swiper.realIndex);
             });
@@ -523,6 +606,10 @@ export default function CardCarousel() {
                           type="song"
                           previewUrl={song?.previewUrl}
                           spotifyUrl={song?.spotifyUrl}
+                          youtubeData={song?.youtubeData}
+                          itemId={song?.songId}
+                          onFavoriteToggle={handleFavoriteToggle}
+                          isFavorited={favorites.has(song?.songId || '')}
                         />
                       ))}
                   </div>
@@ -548,6 +635,9 @@ export default function CardCarousel() {
                           cover={album?.albumCover}
                           type="album"
                           spotifyUrl={album?.spotifyUrl}
+                          itemId={album?.albumId}
+                          onFavoriteToggle={handleFavoriteToggle}
+                          isFavorited={favorites.has(album?.albumId || '')}
                         />
                       ))}
                   </div>

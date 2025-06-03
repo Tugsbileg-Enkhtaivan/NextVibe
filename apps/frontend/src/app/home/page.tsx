@@ -508,7 +508,7 @@ export default function CardCarousel() {
       >
         <h1
           className="relative text-white text-3xl text-center font-bold z-2
-                transition-all duration-700 ease-in-out transform">
+                transition-all duration-700 ease-in-out transform font-[inter]">
           SELECT YOUR MOOD
         </h1>
         <Swiper

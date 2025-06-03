@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react";
+import React, { useState ,useEffect} from "react";
 import { Music2, Heart, Clock, User, Sparkles, Play, Youtube } from 'lucide-react';
 import api from './utils/axios'
 interface Song {
@@ -32,6 +32,15 @@ interface RecommendationsResponse {
   songs?: Song[];
   albums?: Album[];
   fromCache?: boolean;
+}
+
+interface FavoritesResponse {
+  tracks?: Array<{
+    trackId: string;
+  }>;
+  albums?: Array<{
+    albumId: string;
+  }>;
 }
 
 const SelectableGroup = ({ 
@@ -223,6 +232,29 @@ export default function HomePage() {
   const moods = ["Happy", "Sad", "Calm", "Angry", "Energetic", "Melancholic", "Excited", "Peaceful"];
   const genres = ["Lo-fi", "Rock", "Jazz", "Ambient", "Hip Hop", "EDM", "R&B", "Pop"];
   const activities = ["Workout", "Study", "Party", "Relax", "Commute", "Cooking", "Sleep", "Work"];
+
+  const loadUserFavorites = async () => {
+    try {
+      const response = await api.get<FavoritesResponse>('/api/ai-song/favorites');
+      const userFavorites = new Set<string>();
+      
+      response.data.tracks?.forEach((track) => {
+        userFavorites.add(track.trackId);
+      });
+      
+      response.data.albums?.forEach((album) => {
+        userFavorites.add(album.albumId);
+      });
+      
+      setFavorites(userFavorites);
+    } catch (error) {
+      console.error('Error loading favorites:', error);
+    }
+  };
+  
+  useEffect(() => {
+    loadUserFavorites();
+  }, []);
 
   const handleSubmit = async () => {
     if (!mood || !genre || !activity) {

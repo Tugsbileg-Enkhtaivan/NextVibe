@@ -18,7 +18,6 @@ import Header from "../components/Header";
 type EmotionData = {
   image: string;
   color: string;
-  bg?: string
 };
 
 interface Song {
@@ -55,47 +54,38 @@ const data: Record<string, EmotionData> = {
   joy: {
     image: "/assets/joy.webp",
     color: "linear-gradient(135deg, #FFEB3B 0%, #FFC107 50%, #FF8F00 100%)",
-    bg: "bg-amber-500"
   },
   anger: {
     image: "/assets/anger.webp",
     color: "linear-gradient(135deg, #F44336 0%, #D32F2F 50%, #B71C1C 100%)",
-    bg: "bg-red-700"
   },
   envy: {
     image: "/assets/envy.webp",
     color: "linear-gradient(135deg, #00E5CC 0%, #00BFA5 50%, #004D40 100%)",
-    bg: "bg-teal-600"
   },
   fear: {
     image: "/assets/fear.webp",
     color: "linear-gradient(135deg, #9C27B0 0%, #7B1FA2 50%, #4A148C 100%)",
-    bg: "bg-fuchsia-800"
   },
   sadness: {
     image: "/assets/sadness.webp",
     color: "linear-gradient(135deg, #2196F3 0%, #1976D2 50%, #0D47A1 100%)",
-    bg: "bg-blue-700"
   },
   ennui: {
     image: "/assets/ennui.webp",
     color: "linear-gradient(135deg, #5C6BC0 0%, #3F51B5 50%, #1A237E 100%)",
-    bg: "bg-purple-900"
   },
   disgust: {
     image: "/assets/disgust.webp",
     color: "linear-gradient(135deg, #8BC34A 0%, #689F38 50%, #33691E 100%)",
-    bg: "bg-lime-700"
   },
   shame: {
     image: "/assets/embarrassment.webp",
     color: "linear-gradient(135deg, #FF69B4 0%, #E91E63 50%, #880E4F 100%)",
-    bg: "bg-pink-700"
   },
   anxiety: {
     image: "/assets/anxiety.webp",
     color: "linear-gradient(135deg, #FF8C42 0%, #FF6B1A 50%, #E55100 100%)",
-    bg: "bg-orange-600"
   },
 };
 
@@ -143,6 +133,10 @@ const topMusicGenres: Record<string, EmotionData> = {
 };
 
 const topActivities: Record<string, EmotionData> = {
+  Coding: {
+    color: "bg-indigo-600",
+    image: "/assets/activity-icon-coding.webp",
+  },
   Reading: {
     color: "bg-emerald-500",
     image: "/assets/reading-icon.webp",
@@ -188,6 +182,7 @@ const topActivities: Record<string, EmotionData> = {
     image: "/assets/gardening-icon.webp",
   },
 };
+
 
 const stickerGenre = Object.entries(topMusicGenres);
 const stickerActivity = Object.entries(topActivities);

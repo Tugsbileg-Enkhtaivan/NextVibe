@@ -473,8 +473,8 @@ export default function CardCarousel() {
           onClick={handleSubmit}
           disabled={loading}
           className={`
-    text-white border-2 border-white rounded-full py-2 px-3 font-bold text-lg bg-purple-500 relative justify-self-center flex
-    transition-all duration-700 ease-in-out transform
+    text-white border-2 border-white rounded-full py-2 px-3 font-bold text-lg bg-purple-500 relative flex justify-self-center 
+    transition-all duration-700 ease-in-out transform cursor-pointer
     ${loading ? "opacity-50 cursor-not-allowed" : ""}
   `}
         >
@@ -482,7 +482,7 @@ export default function CardCarousel() {
         </button>
       </div>
 
-      <div className="relative z-20">
+      <div className="relative z-19">
         {loading && (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>

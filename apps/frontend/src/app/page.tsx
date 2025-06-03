@@ -1,9 +1,8 @@
-"use client";
+"use client"
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Music2, Heart, Clock, User, Sparkles, Play, Youtube } from 'lucide-react';
-import api from "./utils/axios";
-
+import api from './utils/axios'
 interface Song {
   songName?: string;
   artistName?: string;
@@ -79,7 +78,10 @@ const MusicCard = ({
   type = "song",
   previewUrl,
   spotifyUrl,
-  youtubeData
+  youtubeData,
+  itemId,
+  onFavoriteToggle,
+  isFavorited
 }: {
   title: string;
   artist: string;
@@ -93,8 +95,12 @@ const MusicCard = ({
     title: string;
     thumbnail: string;
   } | null;
+  itemId?: string;
+  onFavoriteToggle?: (itemId: string, itemType: string, isFavorited: boolean) => void;
+  isFavorited?: boolean;
 }) => {
-  // Generate YouTube URL from videoId
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  
   const youtubeUrl = youtubeData?.videoId 
     ? `https://www.youtube.com/watch?v=${youtubeData.videoId}`
     : null;
@@ -102,6 +108,19 @@ const MusicCard = ({
   const handleYouTubePlay = () => {
     if (youtubeUrl) {
       window.open(youtubeUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleFavoriteClick = async () => {
+    if (!itemId || !onFavoriteToggle) return;
+    
+    setFavoriteLoading(true);
+    try {
+      await onFavoriteToggle(itemId, type, isFavorited || false);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    } finally {
+      setFavoriteLoading(false);
     }
   };
 
@@ -147,14 +166,13 @@ const MusicCard = ({
               <button 
                 onClick={() => {
                   const audio = new Audio(previewUrl);
-                  audio.play();
+                  audio.play().catch(e => console.warn('Preview play failed:', e));
                 }}
                 className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full hover:bg-purple-200 transition-colors"
               >
                 Preview
               </button>
             )}
-            {/* YouTube button only for songs, not albums */}
             {type === "song" && youtubeUrl && (
               <button 
                 onClick={handleYouTubePlay}
@@ -166,8 +184,26 @@ const MusicCard = ({
             )}
           </div>
         </div>
-        <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-          <Heart className="w-5 h-5 text-gray-400 hover:text-red-500" />
+        <button 
+          onClick={handleFavoriteClick}
+          disabled={favoriteLoading}
+          className={`p-2 rounded-full transition-all duration-200 ${
+            favoriteLoading 
+              ? 'opacity-50 cursor-not-allowed' 
+              : 'hover:bg-gray-100'
+          }`}
+        >
+          {favoriteLoading ? (
+            <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Heart 
+              className={`w-5 h-5 transition-colors ${
+                isFavorited 
+                  ? 'text-red-500 fill-red-500' 
+                  : 'text-gray-400 hover:text-red-500'
+              }`} 
+            />
+          )}
         </button>
       </div>
     </div>
@@ -182,6 +218,7 @@ export default function HomePage() {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(false);
   const [fromCache, setFromCache] = useState(false);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
   const moods = ["Happy", "Sad", "Calm", "Angry", "Energetic", "Melancholic", "Excited", "Peaceful"];
   const genres = ["Lo-fi", "Rock", "Jazz", "Ambient", "Hip Hop", "EDM", "R&B", "Pop"];
@@ -210,7 +247,6 @@ export default function HomePage() {
     } catch (err: any) {
       console.error("Fetch error:", err);
       
-      // More detailed error handling
       if (err.response?.status === 400) {
         alert("Please make sure all fields are selected (mood, genre, activity)");
       } else if (err.response?.status === 500) {
@@ -220,6 +256,30 @@ export default function HomePage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFavoriteToggle = async (itemId: string, itemType: string, isFavorited: boolean) => {
+    try {
+      if (isFavorited) {
+        // Remove from favorites
+        await api.delete(`/api/ai-song/favorites/${itemId}`);
+        setFavorites(prev => {
+          const newFavorites = new Set(prev);
+          newFavorites.delete(itemId);
+          return newFavorites;
+        });
+      } else {
+        // Add to favorites
+        await api.post("/api/ai-song/favorites", {
+          itemId,
+          itemType
+        });
+        setFavorites(prev => new Set([...prev, itemId]));
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      alert('Failed to update favorites. Please try again.');
     }
   };
 
@@ -313,7 +373,7 @@ export default function HomePage() {
                     .filter((song) => song && typeof song === "object")
                     .map((song, i) => (
                       <MusicCard
-                        key={i}
+                        key={song?.songId || i}
                         title={song?.songName || "Unknown Song"}
                         artist={song?.artistName || "Unknown Artist"}
                         album={song?.albumName || "Unknown Album"}
@@ -322,6 +382,9 @@ export default function HomePage() {
                         previewUrl={song?.previewUrl}
                         spotifyUrl={song?.spotifyUrl}
                         youtubeData={song?.youtubeData}
+                        itemId={song?.songId}
+                        onFavoriteToggle={handleFavoriteToggle}
+                        isFavorited={favorites.has(song?.songId || '')}
                       />
                     ))}
                 </div>
@@ -339,13 +402,15 @@ export default function HomePage() {
                     .filter((album) => album && typeof album === "object")
                     .map((album, i) => (
                       <MusicCard
-                        key={i}
+                        key={album?.albumId || i}
                         title={album?.albumName || "Unknown Album"}
                         artist={album?.artistName || "Unknown Artist"}
                         cover={album?.albumCover}
                         type="album"
                         spotifyUrl={album?.spotifyUrl}
-                        // Note: No youtubeData passed for albums
+                        itemId={album?.albumId}
+                        onFavoriteToggle={handleFavoriteToggle}
+                        isFavorited={favorites.has(album?.albumId || '')}
                       />
                     ))}
                 </div>

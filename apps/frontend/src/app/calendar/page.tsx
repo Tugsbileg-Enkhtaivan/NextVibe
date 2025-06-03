@@ -53,34 +53,33 @@ const MoodCalendar: React.FC = () => {
         return moodData.find(m => m.date === iso);
     };
 
-    // const [currentMonth, setCurrentMonth] = useState(null);
-
-    const handleActiveStartDateChange = ({ activeStartDate }) => {
+    // const handleActiveStartDateChange = ({ activeStartDate }: { activeStartDate: Date }) => {
+        const handleActiveStartDateChange = ({ activeStartDate }) => {
         console.log(activeStartDate, "active")
         const month = activeStartDate.getMonth(); // 0 = January, 11 = December
-        setCurrentMonth(month + 1); // +1 to make it human-readable
+        setCurrentMonth(month + 1); 
     };
 
     console.log(currentMonth, "month")
 
-const obj = {
-    1: "/assets/1.webp",
-    2: "/assets/2.webp",
-    3: "/assets/3.webp",
-    4: "/assets/4.webp",
-    5: "/assets/5.webp",
-    6: "/assets/6.webp",
-    7: "/assets/7.webp",
-    8: "/assets/8.webp",
-    9: "/assets/9.webp",
-    10: "/assets/10.webp",
-    11: "/assets/11.webp",
-    12: "/assets/12.webp",
-}
-console.log(currentMonth, typeof currentMonth)
+    const obj: Record<string, string> = {
+        1: "/assets/1.webp",
+        2: "/assets/2.webp",
+        3: "/assets/3.webp",
+        4: "/assets/4.webp",
+        5: "/assets/5.webp",
+        6: "/assets/6.webp",
+        7: "/assets/7.webp",
+        8: "/assets/8.webp",
+        9: "/assets/9.webp",
+        10: "/assets/10.webp",
+        11: "/assets/11.webp",
+        12: "/assets/12.webp",
+    }
+    console.log(currentMonth, typeof currentMonth)
     return (
         <div className='w-full z-10 mt-10 pt-10' style={{ background: "linear-gradient(135deg, #FFD54F 0%, #FFB300 50%, #FF6F00 100%)" }} >
-           <img src={`${obj[currentMonth]}`}/>
+            <img src={`${obj[currentMonth]}`} />
             <Calendar className="mx-auto p-2 rounded-2xl bg-black"
                 onActiveStartDateChange={handleActiveStartDateChange}
                 // onClickDay={(value, event) => alert(value.toDateString())}

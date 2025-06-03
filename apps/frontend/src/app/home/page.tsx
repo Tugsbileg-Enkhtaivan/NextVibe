@@ -33,6 +33,7 @@ interface Song {
     videoId: string;
     title: string;
     thumbnail: string;
+    url: string;  
   } | null;
 }
 

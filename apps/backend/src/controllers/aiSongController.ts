@@ -273,6 +273,8 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
                 videoId: youtubeResults[0].id.videoId,
                 title: youtubeResults[0].snippet.title,
                 thumbnail: youtubeResults[0].snippet.thumbnails.high.url,
+                // Add the full YouTube URL
+                url: `https://www.youtube.com/watch?v=${youtubeResults[0].id.videoId}`
               };
             }
           } catch (error) {

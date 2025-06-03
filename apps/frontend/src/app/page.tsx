@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Music2, Heart, Clock, User, Sparkles, Play } from 'lucide-react';
+import { Music2, Heart, Clock, User, Sparkles, Play, Youtube } from 'lucide-react';
 import api from "./utils/axios";
 
 interface Song {
@@ -16,6 +16,7 @@ interface Song {
     videoId: string;
     title: string;
     thumbnail: string;
+    url: string;  
   } | null;
 }
 
@@ -77,7 +78,8 @@ const MusicCard = ({
   cover, 
   type = "song",
   previewUrl,
-  spotifyUrl
+  spotifyUrl,
+  youtubeData
 }: {
   title: string;
   artist: string;
@@ -86,63 +88,91 @@ const MusicCard = ({
   type?: "song" | "album";
   previewUrl?: string | null;
   spotifyUrl?: string;
-}) => (
-  <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
-    <div className="flex gap-4 items-center">
-      <div className="relative">
-        {cover ? (
-          <img
-            src={cover}
-            alt={title}
-            className="w-16 h-16 rounded-lg object-cover"
-          />
-        ) : (
-          <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
-            <Music2 className="w-8 h-8 text-white" />
-          </div>
-        )}
-        {previewUrl && (
-          <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm">
-            <Play className="w-3 h-3 text-purple-600" />
-          </div>
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <h3 className="font-semibold text-gray-900 truncate">{title}</h3>
-        <p className="text-purple-600 text-sm truncate">{artist}</p>
-        {album && type === "song" && (
-          <p className="text-gray-500 text-xs truncate">{album}</p>
-        )}
-        <div className="flex gap-2 mt-2">
-          {spotifyUrl && (
-            <a 
-              href={spotifyUrl} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full hover:bg-green-200 transition-colors"
-            >
-              Spotify
-            </a>
+  youtubeData?: {
+    videoId: string;
+    title: string;
+    thumbnail: string;
+  } | null;
+}) => {
+  // Generate YouTube URL from videoId
+  const youtubeUrl = youtubeData?.videoId 
+    ? `https://www.youtube.com/watch?v=${youtubeData.videoId}`
+    : null;
+
+  const handleYouTubePlay = () => {
+    if (youtubeUrl) {
+      window.open(youtubeUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
+      <div className="flex gap-4 items-center">
+        <div className="relative">
+          {cover ? (
+            <img
+              src={cover}
+              alt={title}
+              className="w-16 h-16 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
+              <Music2 className="w-8 h-8 text-white" />
+            </div>
           )}
-          {previewUrl && (
-            <button 
-              onClick={() => {
-                const audio = new Audio(previewUrl);
-                audio.play();
-              }}
-              className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full hover:bg-purple-200 transition-colors"
-            >
-              Preview
-            </button>
+          {(previewUrl || youtubeUrl) && (
+            <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm">
+              <Play className="w-3 h-3 text-purple-600" />
+            </div>
           )}
         </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-900 truncate">{title}</h3>
+          <p className="text-purple-600 text-sm truncate">{artist}</p>
+          {album && type === "song" && (
+            <p className="text-gray-500 text-xs truncate">{album}</p>
+          )}
+          <div className="flex gap-2 mt-2 flex-wrap">
+            {spotifyUrl && (
+              <a 
+                href={spotifyUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full hover:bg-green-200 transition-colors"
+              >
+                Spotify
+              </a>
+            )}
+            {previewUrl && (
+              <button 
+                onClick={() => {
+                  const audio = new Audio(previewUrl);
+                  audio.play();
+                }}
+                className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full hover:bg-purple-200 transition-colors"
+              >
+                Preview
+              </button>
+            )}
+            {/* YouTube button only for songs, not albums */}
+            {type === "song" && youtubeUrl && (
+              <button 
+                onClick={handleYouTubePlay}
+                className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full hover:bg-red-200 transition-colors flex items-center gap-1"
+              >
+                <Youtube className="w-3 h-3" />
+                YouTube
+              </button>
+            )}
+          </div>
+        </div>
+        <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <Heart className="w-5 h-5 text-gray-400 hover:text-red-500" />
+        </button>
       </div>
-      <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-        <Heart className="w-5 h-5 text-gray-400 hover:text-red-500" />
-      </button>
     </div>
-  </div>
-);
+  );
+};
 
 export default function HomePage() {
   const [mood, setMood] = useState<string | null>(null);
@@ -291,6 +321,7 @@ export default function HomePage() {
                         type="song"
                         previewUrl={song?.previewUrl}
                         spotifyUrl={song?.spotifyUrl}
+                        youtubeData={song?.youtubeData}
                       />
                     ))}
                 </div>
@@ -314,6 +345,7 @@ export default function HomePage() {
                         cover={album?.albumCover}
                         type="album"
                         spotifyUrl={album?.spotifyUrl}
+                        // Note: No youtubeData passed for albums
                       />
                     ))}
                 </div>

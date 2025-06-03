@@ -207,7 +207,7 @@ export default function CardCarousel() {
                 <img className="w-[8%] bottom-[36%] left-[2%] rotate-[-220deg]" src={`${stickerActivity[activityIndex][1].image}`}></img>
                 <img className="w-[30%] bottom-[0%] left-[-10%] rotate-[-35deg]" src={`${stickerActivity[activityIndex][1].image}`}></img>
             </div>
-            <div className={`space-y-4 ${generateStart ? "hidden" : "block"}`}>
+            <div className={`space-y-4 ${generateStart ? "pointer-events-none" : "block"}`}>
                 <h1 className={`relative text-white text-3xl text-center font-bold z-2
                 transition-all duration-700 ease-in-out transform
                 ${generateStart ? "opacity-0 -translate-y-10 scale-95 pointer-events-none" : "opacity-100 translate-y-0 scale-100"}
@@ -256,7 +256,7 @@ export default function CardCarousel() {
                     onClick={generateMusic}
                     className={`
     text-white border-2 border-white rounded-full py-2 px-3 font-bold text-lg bg-purple-500 relative justify-self-center
-    transition-all duration-700 ease-in-out transform
+    transition-all duration-700 ease-in-out transform cursor-pointer
     ${generateStart ? "opacity-0 -translate-y-10 scale-95 pointer-events-none flex" : "opacity-100 translate-y-0 scale-100 flex"}
   `}>Generate</button>
             </div>

@@ -11,10 +11,8 @@ import validateQuery from '../middlewares/validateQuery';
 
 const aiSongRouter = Router();
 
-// Public endpoint - allows both authenticated and anonymous users
 aiSongRouter.get('/recommendations',validateQuery ,optionalClerkAuth, getAISongSuggestions);
 
-// Protected endpoints - require authentication
 aiSongRouter.post('/favorites', requireClerkAuth, addToFavorites);
 aiSongRouter.delete('/favorites/:itemId', requireClerkAuth, removeFromFavorites);
 aiSongRouter.get('/favorites', requireClerkAuth, getFavorites);

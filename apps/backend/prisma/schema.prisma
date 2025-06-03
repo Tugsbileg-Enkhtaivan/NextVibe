@@ -1,5 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Updated Prisma schema file with activity support
 
 generator client {
   provider = "prisma-client-js"
@@ -18,13 +17,15 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  profile          Profile?
-  spotifyAccount   SpotifyAccount?
-  listeningHistory ListeningHistory[]
-  recommendations  Recommendation[]
-  favorites        Favorite[]
-  playlists        Playlist[]
-  moodEntries      MoodEntry[]
+  profile             Profile?
+  spotifyAccount      SpotifyAccount?
+  listeningHistory    ListeningHistory[]
+  recommendations     Recommendation[]
+  favorites           Favorite[]
+  playlists           Playlist[]
+  moodEntries         MoodEntry[]
+  activityEntries     ActivityEntry[]
+  moodActivityEntries MoodActivityEntry[]
 
   @@map("users")
 }
@@ -104,11 +105,46 @@ model MoodEntry {
   @@map("mood_entries")
 }
 
+model ActivityEntry {
+  id        String       @id @default(nanoid())
+  userId    String
+  activity  ActivityType
+  duration  Int? // Duration in minutes
+  energy    EnergyLevel
+  context   String? // Additional context
+  location  String? // Where the activity took place
+  createdAt DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("activity_entries")
+}
+
+model MoodActivityEntry {
+  id          String       @id @default(nanoid())
+  userId      String
+  mood        MoodType
+  activity    ActivityType
+  energy      EnergyLevel
+  valence     ValenceLevel
+  genres      String[]
+  description String?
+  createdAt   DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, mood, activity])
+  @@map("mood_activity_entries")
+}
+
 model Recommendation {
   id          String             @id @default(nanoid())
   userId      String
   type        RecommendationType
   mood        MoodType?
+  activity    ActivityType? // Added activity support
   energy      EnergyLevel?
   valence     ValenceLevel?
   genres      String[]
@@ -123,6 +159,7 @@ model Recommendation {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+  @@index([userId, mood, activity])
   @@map("recommendations")
 }
 
@@ -242,6 +279,33 @@ enum MoodType {
   CHILL
   MELANCHOLIC
   VERY_HAPPY
+  EXCITED
+  RELAXED
+  PEACEFUL
+  UPBEAT
+}
+
+enum ActivityType {
+  WORKOUT
+  STUDY
+  WORK
+  PARTY
+  RELAX
+  COMMUTE
+  COOKING
+  CLEANING
+  SLEEP
+  MEDITATION
+  READING
+  GAMING
+  SOCIALIZING
+  TRAVELING
+  SHOPPING
+  DATING
+  DANCING
+  RUNNING
+  WALKING
+  GYM
 }
 
 enum EnergyLevel {
@@ -259,6 +323,7 @@ enum ValenceLevel {
 enum RecommendationType {
   MOOD_BASED
   ACTIVITY_BASED
+  MOOD_ACTIVITY_BASED
   SIMILAR_TO_TRACK
   SIMILAR_TO_ARTIST
   DISCOVERY

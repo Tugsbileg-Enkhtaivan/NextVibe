@@ -1,4 +1,4 @@
-import { PrismaClient, MoodType, FavoriteType, RecommendationType, EnergyLevel, ValenceLevel } from '@prisma/client';
+import { PrismaClient, MoodType, FavoriteType, RecommendationType, EnergyLevel, ValenceLevel, ActivityType } from '@prisma/client';
 import { searchTracks, searchAlbums } from '../services/spotifyService';
 import { isTrackSearchResponse, isAlbumSearchResponse } from '../utils/spotifyUtils';
 
@@ -9,6 +9,7 @@ interface RecommendationData {
   mood?: MoodType;
   energy?: EnergyLevel;
   valence?: ValenceLevel;
+  activity?: ActivityType;
   genres: string[];
   seedTracks?: string[];
   seedArtists?: string[];
@@ -17,12 +18,54 @@ interface RecommendationData {
   albums: any[];
 }
 
+export const ensureUserExistsInService = async (userId: string) => {
+  try {
+    let user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true }
+    });
+
+    if (!user) {
+      console.log(`🔄 Creating user ${userId} in service...`);
+      
+      user = await prisma.user.create({
+        data: {
+          id: userId,
+          email: `${userId}@temp.com`,
+          username: `user_${userId.substring(0, 8)}`,
+          profile: {
+            create: {}
+          }
+        },
+        include: {
+          profile: true
+        }
+      });
+      
+      console.log(`✅ User created in service: ${userId}`);
+    }
+
+    return user;
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return await prisma.user.findUnique({
+        where: { id: userId },
+        include: { profile: true }
+      });
+    }
+    throw error;
+  }
+};
+
 export const saveUserRecommendationHistory = async (
   userId: string,
   recommendation: RecommendationData
 ) => {
   try {
-    return await prisma.recommendation.create({
+    // Ensure user exists first
+    await ensureUserExistsInService(userId);
+
+    const savedRecommendation = await prisma.recommendation.create({
       data: {
         userId,
         type: recommendation.type,
@@ -30,42 +73,54 @@ export const saveUserRecommendationHistory = async (
         energy: recommendation.energy,
         valence: recommendation.valence,
         genres: recommendation.genres,
+        activity: recommendation.activity,
         seedTracks: recommendation.seedTracks || [],
         seedArtists: recommendation.seedArtists || [],
         parameters: recommendation.parameters,
         tracks: {
           create: recommendation.tracks.map((track, index) => ({
-            trackId: track.id || track.trackId,
+            trackId: track.id || track.trackId || track.songId,
             position: index,
-            name: track.name,
+            name: track.name || track.songName,
             artistNames: Array.isArray(track.artists) 
               ? track.artists.map((artist: any) => artist.name)
-              : [track.artist || 'Unknown'],
-            albumName: track.album?.name || track.albumName,
-            imageUrl: track.album?.images?.[0]?.url || track.imageUrl || track.albumCover,
-            previewUrl: track.preview_url || track.previewUrl,
-            duration: track.duration_ms || track.duration,
-            popularity: track.popularity
+              : Array.isArray(track.artistNames) 
+                ? track.artistNames
+                : [track.artist || track.artistName || 'Unknown'],
+            albumName: track.album?.name || track.albumName || 'Unknown',
+            imageUrl: track.album?.images?.[0]?.url || track.imageUrl || track.albumCover || null,
+            previewUrl: track.preview_url || track.previewUrl || null,
+            duration: track.duration_ms || track.duration || null,
+            popularity: track.popularity || null
           }))
         },
         albums: {
           create: recommendation.albums.map((album, index) => ({
             albumId: album.id || album.albumId,
             position: index,
-            name: album.name,
+            name: album.name || album.albumName,
             artistNames: Array.isArray(album.artists) 
               ? album.artists.map((artist: any) => artist.name)
-              : [album.artist || 'Unknown'],
-            imageUrl: album.images?.[0]?.url || album.imageUrl || album.albumCover,
-            releaseDate: album.release_date || album.releaseDate,
-            totalTracks: album.total_tracks || album.totalTracks
+              : Array.isArray(album.artistNames)
+                ? album.artistNames
+                : [album.artist || album.artistName || 'Unknown'],
+            imageUrl: album.images?.[0]?.url || album.imageUrl || album.albumCover || null,
+            releaseDate: album.release_date || album.releaseDate || null,
+            totalTracks: album.total_tracks || album.totalTracks || null
           }))
         }
+      },
+      include: {
+        tracks: true,
+        albums: true
       }
     });
-  } catch (error) {
-    console.error('Error saving recommendation history:', error);
-    throw new Error('Failed to save recommendation history');
+
+    console.log(`✅ Recommendation saved for user ${userId}`);
+    return savedRecommendation;
+  } catch (error: any) {
+    console.error('❌ Error saving recommendation history:', error);
+    throw new Error(`Failed to save recommendation history: ${error.message}`);
   }
 };
 
@@ -74,7 +129,9 @@ export const getUserRecommendationHistory = async (
   limit: number = 10
 ) => {
   try {
-    return await prisma.recommendation.findMany({
+    await ensureUserExistsInService(userId);
+
+    const recommendations = await prisma.recommendation.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -87,9 +144,44 @@ export const getUserRecommendationHistory = async (
         }
       }
     });
+
+    console.log(`✅ Retrieved ${recommendations.length} recommendations for user ${userId}`);
+    return recommendations;
   } catch (error) {
-    console.error('Error retrieving recommendation history:', error);
-    throw new Error('Failed to retrieve recommendation history');
+    console.error('❌ Error retrieving recommendation history:', error);
+    return [];
+  }
+};
+
+export const saveMoodEntry = async (
+  userId: string,
+  moodData: {
+    mood: MoodType;
+    energy: EnergyLevel;
+    valence: ValenceLevel;
+    genres: string[];
+    description?: string;
+  }
+) => {
+  try {
+    await ensureUserExistsInService(userId);
+
+    const moodEntry = await prisma.moodEntry.create({
+      data: {
+        userId,
+        mood: moodData.mood,
+        energy: moodData.energy,
+        valence: moodData.valence,
+        genres: moodData.genres,
+        description: moodData.description
+      }
+    });
+
+    console.log(`✅ Mood entry saved for user ${userId}`);
+    return moodEntry;
+  } catch (error) {
+    console.error('❌ Error saving mood entry:', error);
+    throw new Error('Failed to save mood entry');
   }
 };
 
@@ -99,7 +191,26 @@ export const addToUserFavorites = async (
   itemType: 'track' | 'album' | 'artist' | 'playlist'
 ) => {
   try {
-    // Convert itemType to match Prisma enum
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!existingUser) {
+      try {
+        await prisma.user.create({
+          data: {
+            id: userId,
+            email: `${userId}@temp.com`, 
+            username: `user_${userId.substring(0, 8)}`, 
+          }
+        });
+      } catch (createError: any) {
+        if (createError.code !== 'P2002') {
+          throw createError;
+        }
+      }
+    }
+
     const favoriteType: FavoriteType = itemType.toUpperCase() as FavoriteType;
     
     const existing = await prisma.favorite.findFirst({
@@ -118,33 +229,41 @@ export const addToUserFavorites = async (
     let metadata: any = {};
 
     if (itemType === 'track') {
-      const result = await searchTracks(`id:${itemId}`);
-      if (isTrackSearchResponse(result) && result.tracks.items.length > 0) {
-        const track = result.tracks.items[0];
-        name = track.name;
-        artistNames = track.artists.map(artist => artist.name);
-        imageUrl = track.album.images?.[0]?.url || '';
-        metadata = {
-          albumId: track.album.id,
-          albumName: track.album.name,
-          previewUrl: track.preview_url,
-          duration: track.duration_ms,
-          popularity: track.popularity,
-          spotifyUrl: track.external_urls?.spotify || null
-        };
+      try {
+        const result = await searchTracks(`id:${itemId}`);
+        if (isTrackSearchResponse(result) && result.tracks.items.length > 0) {
+          const track = result.tracks.items[0];
+          name = track.name;
+          artistNames = track.artists.map(artist => artist.name);
+          imageUrl = track.album.images?.[0]?.url || '';
+          metadata = {
+            albumId: track.album.id,
+            albumName: track.album.name,
+            previewUrl: track.preview_url,
+            duration: track.duration_ms,
+            popularity: track.popularity,
+            spotifyUrl: track.external_urls?.spotify || null
+          };
+        }
+      } catch (searchError) {
+        console.warn(`Failed to fetch track details for ${itemId}:`, searchError);
       }
     } else if (itemType === 'album') {
-      const result = await searchAlbums(`id:${itemId}`);
-      if (isAlbumSearchResponse(result) && result.albums.items.length > 0) {
-        const album = result.albums.items[0];
-        name = album.name;
-        artistNames = album.artists.map(artist => artist.name);
-        imageUrl = album.images?.[0]?.url || '';
-        metadata = {
-          releaseDate: album.release_date,
-          totalTracks: album.total_tracks,
-          spotifyUrl: album.external_urls?.spotify || null
-        };
+      try {
+        const result = await searchAlbums(`id:${itemId}`);
+        if (isAlbumSearchResponse(result) && result.albums.items.length > 0) {
+          const album = result.albums.items[0];
+          name = album.name;
+          artistNames = album.artists.map(artist => artist.name);
+          imageUrl = album.images?.[0]?.url || '';
+          metadata = {
+            releaseDate: album.release_date,
+            totalTracks: album.total_tracks,
+            spotifyUrl: album.external_urls?.spotify || null
+          };
+        }
+      } catch (searchError) {
+        console.warn(`Failed to fetch album details for ${itemId}:`, searchError);
       }
     }
 
@@ -159,8 +278,11 @@ export const addToUserFavorites = async (
         metadata
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error adding to favorites:', error);
+    if (error.code === 'P2003') {
+      throw new Error('User not found. Please ensure user is properly authenticated.');
+    }
     throw new Error('Failed to add item to favorites');
   }
 };
@@ -181,6 +303,16 @@ export const removeFromUserFavorites = async (
 
 export const getUserFavorites = async (userId: string) => {
   try {
+    // Check if user exists first
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!existingUser) {
+      console.warn(`User ${userId} not found in database`);
+      return { tracks: [], albums: [], artists: [], playlists: [] };
+    }
+
     const favorites = await prisma.favorite.findMany({
       where: { userId },
       orderBy: { addedAt: 'desc' }
@@ -240,7 +372,7 @@ export const getUserFavorites = async (userId: string) => {
     return { tracks, albums, artists, playlists };
   } catch (error) {
     console.error('Error retrieving favorites:', error);
-    throw new Error('Failed to retrieve favorites');
+    return { tracks: [], albums: [], artists: [], playlists: [] };
   }
 };
 

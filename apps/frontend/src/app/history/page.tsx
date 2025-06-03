@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useState, useEffect } from 'react';
 import { Music2, Heart, Clock, User, Sparkles, Play, Calendar, Filter, Search, Trash2, Star } from 'lucide-react';
 import api from "../utils/axios"

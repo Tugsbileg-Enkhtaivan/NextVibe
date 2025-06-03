@@ -8,15 +8,16 @@ import "swiper/css/effect-cards";
 import "swiper/css/pagination";
 
 import Image from "next/image";
-import { SetStateAction, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import FlipSwiperGenre from "../components/FlipSwiperGenre";
 import FlipSwiperActivity from "../components/FlipSwiperActivity";
 import api from "../utils/axios";
-import { Music2, Heart, Clock, User, Sparkles, Play } from "lucide-react";
+import { Music2, Heart, Play } from "lucide-react";
 
 type EmotionData = {
   image: string;
   color: string;
+  bg?: string
 };
 
 interface Song {
@@ -53,38 +54,47 @@ const data: Record<string, EmotionData> = {
   joy: {
     image: "/assets/joy.webp",
     color: "linear-gradient(135deg, #FFEB3B 0%, #FFC107 50%, #FF8F00 100%)",
+    bg: "bg-amber-500"
   },
   anger: {
     image: "/assets/anger.webp",
     color: "linear-gradient(135deg, #F44336 0%, #D32F2F 50%, #B71C1C 100%)",
+    bg: "bg-red-700"
   },
   envy: {
     image: "/assets/envy.webp",
     color: "linear-gradient(135deg, #00E5CC 0%, #00BFA5 50%, #004D40 100%)",
+    bg: "bg-teal-600"
   },
   fear: {
     image: "/assets/fear.webp",
     color: "linear-gradient(135deg, #9C27B0 0%, #7B1FA2 50%, #4A148C 100%)",
+    bg: "bg-fuchsia-800"
   },
   sadness: {
     image: "/assets/sadness.webp",
     color: "linear-gradient(135deg, #2196F3 0%, #1976D2 50%, #0D47A1 100%)",
+    bg: "bg-blue-700"
   },
   ennui: {
     image: "/assets/ennui.webp",
     color: "linear-gradient(135deg, #5C6BC0 0%, #3F51B5 50%, #1A237E 100%)",
+    bg: "bg-purple-900"
   },
   disgust: {
     image: "/assets/disgust.webp",
     color: "linear-gradient(135deg, #8BC34A 0%, #689F38 50%, #33691E 100%)",
+    bg: "bg-lime-700"
   },
   shame: {
     image: "/assets/embarrassment.webp",
     color: "linear-gradient(135deg, #FF69B4 0%, #E91E63 50%, #880E4F 100%)",
+    bg: "bg-pink-700"
   },
   anxiety: {
     image: "/assets/anxiety.webp",
     color: "linear-gradient(135deg, #FF8C42 0%, #FF6B1A 50%, #E55100 100%)",
+    bg: "bg-orange-600"
   },
 };
 
@@ -198,7 +208,7 @@ const MusicCard = ({
   previewUrl?: string | null;
   spotifyUrl?: string;
 }) => (
-  <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
+  <div className={`rounded-xl p-4 shadow-2xl hover:shadow-md transition-shadow duration-200 bg-[#F5F5F5]`}>
     <div className="flex gap-4 items-center">
       <div className="relative">
         {cover ? (
@@ -218,19 +228,26 @@ const MusicCard = ({
           </div>
         )}
       </div>
+
       <div className="flex-1 min-w-0">
         <h3 className="font-semibold text-gray-900 truncate">{title}</h3>
         <p className="text-purple-600 text-sm truncate">{artist}</p>
         {album && type === "song" && (
           <p className="text-gray-500 text-xs truncate">{album}</p>
         )}
-        <div className="flex gap-2 mt-2">
+
+      </div>
+
+      <div className="flex flex-col items-center">
+        <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <Heart className="w-5 h-5 text-gray-400 hover:text-red-500" />
+        </button><div className="flex gap-2 mt-2">
           {spotifyUrl && (
             <a
               href={spotifyUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full hover:bg-green-200 transition-colors"
+              className="text-xs bg-green-500 text-black px-2 py-1 rounded-full hover:bg-green-200 transition-colors"
             >
               Spotify
             </a>
@@ -248,9 +265,6 @@ const MusicCard = ({
           )}
         </div>
       </div>
-      <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-        <Heart className="w-5 h-5 text-gray-400 hover:text-red-500" />
-      </button>
     </div>
   </div>
 );
@@ -403,20 +417,11 @@ export default function CardCarousel() {
         ></img>
       </div>
       <div
-        className={`space-y-4 ${
-          generateStart ? "pointer-events-none" : "block"
-        }`}
+        className="space-y-4"
       >
         <h1
-          className={`relative text-white text-3xl text-center font-bold z-2
-                transition-all duration-700 ease-in-out transform
-                ${
-                  generateStart
-                    ? "opacity-0 -translate-y-10 scale-95 pointer-events-none"
-                    : "opacity-100 translate-y-0 scale-100"
-                }
-              `}
-        >
+          className="relative text-white text-3xl text-center font-bold z-2
+                transition-all duration-700 ease-in-out transform">
           SELECT YOUR MOOD
         </h1>
         <Swiper
@@ -425,14 +430,8 @@ export default function CardCarousel() {
           grabCursor={true}
           pagination={{ clickable: true }}
           modules={[EffectCards, Pagination]}
-          className={`w-[250px] h-[350px] 
-                transition-all duration-700 ease-in-out transform
-                ${
-                  generateStart
-                    ? "opacity-0 -translate-y-10 scale-95 pointer-events-none"
-                    : "opacity-100 translate-y-0 scale-100"
-                }
-              `}
+          className="w-[250px] h-[350px] 
+                transition-all duration-700 ease-in-out transform"
           onSwiper={(swiper) => {
             swiperRef.current = swiper;
 
@@ -464,23 +463,16 @@ export default function CardCarousel() {
 
         <FlipSwiperGenre
           setGenreIndex={setGenreIndex}
-          generateStart={generateStart}
         />
         <FlipSwiperActivity
           setActivityIndex={setActivityIndex}
-          generateStart={generateStart}
         />
         <button
           onClick={handleSubmit}
           disabled={loading}
           className={`
-    text-white border-2 border-white rounded-full py-2 px-3 font-bold text-lg bg-purple-500 relative justify-self-center
+    text-white border-2 border-white rounded-full py-2 px-3 font-bold text-lg bg-purple-500 relative justify-self-center flex
     transition-all duration-700 ease-in-out transform
-    ${
-      generateStart
-        ? "opacity-0 -translate-y-10 scale-95 pointer-events-none flex"
-        : "opacity-100 translate-y-0 scale-100 flex"
-    }
     ${loading ? "opacity-50 cursor-not-allowed" : ""}
   `}
         >
@@ -488,76 +480,80 @@ export default function CardCarousel() {
         </button>
       </div>
 
-      {loading && (
-        <div className="flex justify-center items-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-        </div>
-      )}
+      <div className="relative z-20">
+        {loading && (
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+          </div>
+        )}
 
-      {fromCache && (
-        <div className="mt-4 text-center">
-          <span className="inline-block bg-blue-100 text-blue-700 text-sm px-3 py-1 rounded-full">
-            ⚡ Results from cache
-          </span>
-        </div>
-      )}
+        {fromCache && (
+          <div className="mt-4 text-center">
+            <span className="inline-block bg-blue-100 text-blue-700 text-sm px-3 py-1 rounded-full">
+              ⚡ Results from cache
+            </span>
+          </div>
+        )}
 
-      {/* Results */}
-      {(songs.length > 0 || albums.length > 0) && (
-        <div className="space-y-8">
-          {songs.length > 0 && (
-            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
-              <div className="flex items-center gap-2 mb-6">
-                <Play className="w-6 h-6 text-purple-600" />
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Recommended Songs
-                </h2>
-              </div>
-              <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
-                {songs
-                  .filter((song) => song && typeof song === "object")
-                  .map((song, i) => (
-                    <MusicCard
-                      key={i}
-                      title={song?.songName || "Unknown Song"}
-                      artist={song?.artistName || "Unknown Artist"}
-                      album={song?.albumName || "Unknown Album"}
-                      cover={song?.albumCover}
-                      type="song"
-                      previewUrl={song?.previewUrl}
-                      spotifyUrl={song?.spotifyUrl}
-                    />
-                  ))}
-              </div>
+        {/* Results */}
+        <div className="relative z-10 transition-all duration-700 ease-in-out transform">
+          {(songs.length > 0 || albums.length > 0) && (
+            <div className="space-y-8">
+              {songs.length > 0 && (
+                <div className="p-8">
+                  <div className="flex items-center gap-2 mb-6 text-white">
+                    <img src="/assets/recommend-icon-1.webp" className="w-10" />
+                    <h2 className="text-3xl font-bold border-l pl-3 font-fredoka">
+                      Recommended Songs
+                    </h2>
+                  </div>
+                  <div className="flex flex-col gap-4">
+                    {songs
+                      .filter((song) => song && typeof song === "object")
+                      .map((song, i) => (
+                        <MusicCard
+                          key={i}
+                          title={song?.songName || "Unknown Song"}
+                          artist={song?.artistName || "Unknown Artist"}
+                          album={song?.albumName || "Unknown Album"}
+                          cover={song?.albumCover}
+                          type="song"
+                          previewUrl={song?.previewUrl}
+                          spotifyUrl={song?.spotifyUrl}
+                        />
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {albums.length > 0 && (
+                <div className="p-8">
+                  <div className="flex items-center gap-2 mb-6">
+                    <img src="/assets/recommend-icon-cd.webp" className="w-10" />
+                    <h2 className="text-3xl font-bold border-l pl-3 text-white">
+                      Recommended Albums
+                    </h2>
+                  </div>
+                  <div className="flex flex-col gap-4">
+                    {albums
+                      .filter((album) => album && typeof album === "object")
+                      .map((album, i) => (
+                        <MusicCard
+                          key={i}
+                          title={album?.albumName || "Unknown Album"}
+                          artist={album?.artistName || "Unknown Artist"}
+                          cover={album?.albumCover}
+                          type="album"
+                          spotifyUrl={album?.spotifyUrl}
+                        />
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
-
-          {albums.length > 0 && (
-            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
-              <div className="flex items-center gap-2 mb-6">
-                <Music2 className="w-6 h-6 text-purple-600" />
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Recommended Albums
-                </h2>
-              </div>
-              <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
-                {albums
-                  .filter((album) => album && typeof album === "object")
-                  .map((album, i) => (
-                    <MusicCard
-                      key={i}
-                      title={album?.albumName || "Unknown Album"}
-                      artist={album?.artistName || "Unknown Artist"}
-                      cover={album?.albumCover}
-                      type="album"
-                      spotifyUrl={album?.spotifyUrl}
-                    />
-                  ))}
-              </div>
-            </div>
-          )}
         </div>
-      )}
-    </div>
+      </div>
+    </div >
   );
 }

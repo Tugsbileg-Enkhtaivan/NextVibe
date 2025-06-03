@@ -27,6 +27,7 @@ const moodFaces: Record<Mood, string> = {
 
 const MoodCalendar: React.FC = () => {
     const [moodData, setMoodData] = useState<MoodData[]>([]);
+    const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1)
 
     //   useEffect(() => {
     //     // Replace with your actual backend call
@@ -37,7 +38,7 @@ const MoodCalendar: React.FC = () => {
 
 
     const data = [
-        { "date": "2025-04-01", "mood": "neutral" },
+        { "date": "2025-04-01", "mood": "focused" },
         { "date": "2025-04-02", "mood": "happy" },
         { "date": "2025-04-20", "mood": "very_happy" },
         { "date": "2025-04-30", "mood": "sad" }
@@ -54,21 +55,35 @@ const MoodCalendar: React.FC = () => {
 
     // const [currentMonth, setCurrentMonth] = useState(null);
 
-    // const handleActiveStartDateChange = ({ activeStartDate }) => {
-    //   const month = activeStartDate.getMonth(); // 0 = January, 11 = December
-    //   setCurrentMonth({ month: month + 1,}); // +1 to make it human-readable
-    // };
-  
-    // console.log(currentMonth, "month")
+    const handleActiveStartDateChange = ({ activeStartDate }) => {
+        console.log(activeStartDate, "active")
+        const month = activeStartDate.getMonth(); // 0 = January, 11 = December
+        setCurrentMonth(month + 1); // +1 to make it human-readable
+    };
 
+    console.log(currentMonth, "month")
 
+const obj = {
+    1: "/assets/1.webp",
+    2: "/assets/2.webp",
+    3: "/assets/3.webp",
+    4: "/assets/4.webp",
+    5: "/assets/5.webp",
+    6: "/assets/6.webp",
+    7: "/assets/7.webp",
+    8: "/assets/8.webp",
+    9: "/assets/9.webp",
+    10: "/assets/10.webp",
+    11: "/assets/11.webp",
+    12: "/assets/12.webp",
+}
+console.log(currentMonth, typeof currentMonth)
     return (
-        <div className='w-full z-10 mt-10 pt-10'  style={{background: "linear-gradient(135deg, #FFD54F 0%, #FFB300 50%, #FF6F00 100%)"}} >
+        <div className='w-full z-10 mt-10 pt-10' style={{ background: "linear-gradient(135deg, #FFD54F 0%, #FFB300 50%, #FF6F00 100%)" }} >
+           <img src={`${obj[currentMonth]}`}/>
             <Calendar className="mx-auto p-2 rounded-2xl bg-black"
-            // onActiveStartDateChange={handleActiveStartDateChange}
-                onClickDay={(value, event) => alert(value.toDateString())}
-                // onActiveStartDateChange={}
-                // navigationLabel={({ date, label, locale, view }) => alert(`Current view: ${view}, date: ${date.toLocaleDateString(locale)}`)}
+                onActiveStartDateChange={handleActiveStartDateChange}
+                // onClickDay={(value, event) => alert(value.toDateString())}
                 tileClassName=""
                 tileContent={({ date, view }) => {
                     if (view !== 'month') return null;

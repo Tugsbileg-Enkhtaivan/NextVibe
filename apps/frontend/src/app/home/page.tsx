@@ -18,7 +18,6 @@ import Header from "../components/Header";
 type EmotionData = {
   image: string;
   color: string;
-  bg?: string
 };
 
 interface Song {
@@ -33,7 +32,7 @@ interface Song {
     videoId: string;
     title: string;
     thumbnail: string;
-    url: string;  
+    url: string;
   } | null;
 }
 
@@ -65,47 +64,38 @@ const data: Record<string, EmotionData> = {
   joy: {
     image: "/assets/joy.webp",
     color: "linear-gradient(135deg, #FFEB3B 0%, #FFC107 50%, #FF8F00 100%)",
-    bg: "bg-amber-500"
   },
   anger: {
     image: "/assets/anger.webp",
     color: "linear-gradient(135deg, #F44336 0%, #D32F2F 50%, #B71C1C 100%)",
-    bg: "bg-red-700"
   },
   envy: {
     image: "/assets/envy.webp",
     color: "linear-gradient(135deg, #00E5CC 0%, #00BFA5 50%, #004D40 100%)",
-    bg: "bg-teal-600"
   },
   fear: {
     image: "/assets/fear.webp",
     color: "linear-gradient(135deg, #9C27B0 0%, #7B1FA2 50%, #4A148C 100%)",
-    bg: "bg-fuchsia-800"
   },
   sadness: {
     image: "/assets/sadness.webp",
     color: "linear-gradient(135deg, #2196F3 0%, #1976D2 50%, #0D47A1 100%)",
-    bg: "bg-blue-700"
   },
   ennui: {
     image: "/assets/ennui.webp",
     color: "linear-gradient(135deg, #5C6BC0 0%, #3F51B5 50%, #1A237E 100%)",
-    bg: "bg-purple-900"
   },
   disgust: {
     image: "/assets/disgust.webp",
     color: "linear-gradient(135deg, #8BC34A 0%, #689F38 50%, #33691E 100%)",
-    bg: "bg-lime-700"
   },
   shame: {
     image: "/assets/embarrassment.webp",
     color: "linear-gradient(135deg, #FF69B4 0%, #E91E63 50%, #880E4F 100%)",
-    bg: "bg-pink-700"
   },
   anxiety: {
     image: "/assets/anxiety.webp",
     color: "linear-gradient(135deg, #FF8C42 0%, #FF6B1A 50%, #E55100 100%)",
-    bg: "bg-orange-600"
   },
 };
 
@@ -153,6 +143,10 @@ const topMusicGenres: Record<string, EmotionData> = {
 };
 
 const topActivities: Record<string, EmotionData> = {
+  Coding: {
+    color: "bg-indigo-600",
+    image: "/assets/activity-icon-coding.webp",
+  },
   Reading: {
     color: "bg-emerald-500",
     image: "/assets/reading-icon.webp",
@@ -198,6 +192,7 @@ const topActivities: Record<string, EmotionData> = {
     image: "/assets/gardening-icon.webp",
   },
 };
+
 
 const stickerGenre = Object.entries(topMusicGenres);
 const stickerActivity = Object.entries(topActivities);
@@ -464,7 +459,7 @@ export default function CardCarousel() {
       style={{ backgroundImage: `${colors[index][1].color}` }}
     >
       <Header />
-      <div className="w-full min-h-screen h-full absolute [&>*]:absolute">
+      <div className="w-full h-screen absolute [&>*]:absolute">
         <img
           className="w-[20%] top-[-15%] left-[40%] rotate-50"
           src={`${stickerGenre[genreIndex][1].image}`}
@@ -490,19 +485,63 @@ export default function CardCarousel() {
           src={`${stickerGenre[genreIndex][1].image}`}
         ></img>
         <img
-          className="w-[60%] bottom-[23%] right-[-10%] rotate-130"
+          className="w-[35%] bottom-[23%] right-[-5%] rotate-130"
           src={`${stickerGenre[genreIndex][1].image}`}
         ></img>
         <img
-          className="w-[25%] bottom-[15%] left-[7%] rotate-40"
+          className="w-[20%] bottom-[14%] right-[-4%] rotate-[35deg]"
           src={`${stickerGenre[genreIndex][1].image}`}
         ></img>
         <img
-          className="w-[20%] bottom-[10%] right-[10%] rotate-[35deg]"
+          className="w-[8%] bottom-[5%] left-[32%] rotate-[-20deg]"
           src={`${stickerGenre[genreIndex][1].image}`}
         ></img>
         <img
-          className="w-[20%] bottom-[5%] left-[30%] rotate-[-45deg]"
+          className="w-[20%] top-[100%] right-[-5%] rotate-[-25deg]"
+          src={`${stickerGenre[genreIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[20%] top-[112%] left-[-5%] rotate-[45deg]"
+          src={`${stickerGenre[genreIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[20%] top-[125%] right-[-5%] rotate-[-45deg]"
+          src={`${stickerGenre[genreIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[20%] top-[135%] left-[-2%] rotate-[-15deg]"
+          src={`${stickerGenre[genreIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[20%] top-[152%] right-[-5%] rotate-[25deg]"
+          src={`${stickerGenre[genreIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[20%] top-[175%] left-[-4%] rotate-[-30deg]"
+          src={`${stickerGenre[genreIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[20%] top-[198%] right-[-3%] rotate-[45deg]"
+          src={`${stickerGenre[genreIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[15%] bottom-[27%] left-[7%] rotate-40"
+          src={`${stickerGenre[genreIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[11%] top-[200%] left-[0%] rotate-[20deg]"
+          src={`${stickerGenre[genreIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[11%] top-[125%] left-[37%] rotate-[-20deg]"
+          src={`${stickerGenre[genreIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[17%] top-[166%] left-[62%] rotate-[180deg]"
+          src={`${stickerGenre[genreIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[8%] top-[189%] left-[57%] rotate-[20deg]"
           src={`${stickerGenre[genreIndex][1].image}`}
         ></img>
 
@@ -511,7 +550,7 @@ export default function CardCarousel() {
           src={`${stickerActivity[activityIndex][1].image}`}
         ></img>
         <img
-          className="w-[20%] bottom-[15%] right-[35%] rotate-[-30deg]"
+          className="w-[20%] top-[138%] right-[1%] rotate-[30deg]"
           src={`${stickerActivity[activityIndex][1].image}`}
         ></img>
         <img
@@ -531,16 +570,61 @@ export default function CardCarousel() {
           src={`${stickerActivity[activityIndex][1].image}`}
         ></img>
         <img
-          className="w-[30%] bottom-[0%] left-[-10%] rotate-[-35deg]"
+          className="w-[7%] top-[178%] left-[30%] rotate-[25deg]"
+          src={`${stickerActivity[activityIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[19%] top-[198%] left-[30%] rotate-[-85deg]"
+          src={`${stickerActivity[activityIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[15%] top-[90%] right-[-5%] rotate-[235deg]"
+          src={`${stickerActivity[activityIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[18%] top-[100%] left-[-2%] rotate-[-35deg]"
+          src={`${stickerActivity[activityIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[10%] top-[114%] right-[0%] rotate-[415deg]"
+          src={`${stickerActivity[activityIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[14%] top-[125%] left-[-4%] rotate-[-35deg]"
+          src={`${stickerActivity[activityIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[12%] top-[165%] left-[-1%] rotate-[-25deg]"
+          src={`${stickerActivity[activityIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[19%] top-[176%] right-[-6%] rotate-[-35deg]"
+          src={`${stickerActivity[activityIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[26%] top-[209%] left-[-10%] rotate-[25deg]"
+          src={`${stickerActivity[activityIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[11%] top-[190%] left-[1%] rotate-[-35deg]"
+          src={`${stickerActivity[activityIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[15%] top-[214%] right-[1%] rotate-[0deg]"
+          src={`${stickerActivity[activityIndex][1].image}`}
+        ></img>
+        <img
+          className="w-[11%] top-[102%] right-[30%] rotate-[20deg]"
           src={`${stickerActivity[activityIndex][1].image}`}
         ></img>
       </div>
+
       <div
         className="space-y-4"
       >
         <h1
           className="relative text-white text-3xl text-center font-bold z-2
-                transition-all duration-700 ease-in-out transform">
+                transition-all duration-700 ease-in-out transform font-[inter]">
           SELECT YOUR MOOD
         </h1>
         <Swiper
@@ -589,8 +673,8 @@ export default function CardCarousel() {
           onClick={handleSubmit}
           disabled={loading}
           className={`
-    text-white border-2 border-white rounded-full py-2 px-3 font-bold text-lg bg-purple-500 relative justify-self-center flex
-    transition-all duration-700 ease-in-out transform
+    text-white border-2 border-white rounded-full py-2 px-3 font-bold text-lg bg-purple-500 relative flex justify-self-center 
+    transition-all duration-700 ease-in-out transform cursor-pointer
     ${loading ? "opacity-50 cursor-not-allowed" : ""}
   `}
         >
@@ -598,7 +682,7 @@ export default function CardCarousel() {
         </button>
       </div>
 
-      <div className="relative z-20">
+      <div className="relative z-19">
         {loading && (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>

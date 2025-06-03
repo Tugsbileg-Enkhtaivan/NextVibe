@@ -19,49 +19,53 @@ type EmotionData = {
 };
 
 const topActivities: Record<string, EmotionData> = {
+    Coding: {
+        color: "bg-indigo-600",
+        image: "/assets/activity-icon-coding.webp",
+    },
     Reading: {
         color: "bg-emerald-500",
-        image: "/assets/reading-icon.webp"
+        image: "/assets/reading-icon.webp",
     },
     Nothing: {
         color: "bg-gray-400",
-        image: "/assets/chill-out-icon.webp"
+        image: "/assets/chill-out-icon.webp",
     },
     Running: {
         color: "bg-orange-600",
-        image: "/assets/running-icon.webp"
+        image: "/assets/running-icon.webp",
     },
     Cooking: {
         color: "bg-amber-500",
-        image: "/assets/cooking-icon.webp"
+        image: "/assets/cooking-icon.webp",
     },
     Traveling: {
         color: "bg-blue-500",
-        image: "/assets/travel-icon.webp"
+        image: "/assets/travel-icon.webp",
     },
     Gaming: {
         color: "bg-purple-700",
-        image: "/assets/gaming-icon.webp"
+        image: "/assets/gaming-icon.webp",
     },
     Drawing: {
         color: "bg-pink-400",
-        image: "/assets/drawing-icon.webp"
+        image: "/assets/drawing-icon.webp",
     },
     Yoga: {
         color: "bg-teal-400",
-        image: "/assets/yoga-icon.webp"
+        image: "/assets/yoga-icon.webp",
     },
     Biking: {
         color: "bg-lime-500",
-        image: "/assets/biking-icon.webp"
+        image: "/assets/biking-icon.webp",
     },
     Dancing: {
         color: "bg-rose-500",
-        image: "/assets/dancing-icon.webp"
+        image: "/assets/dancing-icon.webp",
     },
     Gardening: {
         color: "bg-green-600",
-        image: "/assets/gardening-icon.webp"
+        image: "/assets/gardening-icon.webp",
     },
 };
 

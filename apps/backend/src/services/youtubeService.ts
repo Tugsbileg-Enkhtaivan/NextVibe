@@ -69,3 +69,26 @@ export const searchYouTubeVideos = async (
 export const getYouTubeEmbedUrl = (videoId: string): string => {
   return `https://www.youtube.com/embed/${videoId}`;
 };
+
+const SERPAPI_KEY = process.env.SERPAPI_KEY;
+
+const searchYouTubeViaSerpAPI = async (query: string) => {
+  const url = `https://serpapi.com/search`;
+  const response = await axios.get(url, {
+    params: {
+      engine: 'youtube',
+      q: query,
+      api_key: SERPAPI_KEY,
+    }
+  });
+
+  const video = response.data.video_results?.[0];
+  if (!video) throw new Error('No video found');
+
+  return {
+    videoId: video.video_id,
+    title: video.title,
+    url: video.link,
+    thumbnail: video.thumbnail,
+  };
+};

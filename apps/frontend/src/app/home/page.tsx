@@ -8,7 +8,7 @@ import "swiper/css/effect-cards";
 import "swiper/css/pagination";
 
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useRef, useState ,useEffect} from "react";
 import FlipSwiperGenre from "../components/FlipSwiperGenre";
 import FlipSwiperActivity from "../components/FlipSwiperActivity";
 import api from "../utils/axios";
@@ -50,6 +50,15 @@ interface RecommendationsResponse {
   songs?: Song[];
   albums?: Album[];
   fromCache?: boolean;
+}
+
+interface FavoritesResponse {
+  tracks?: Array<{
+    trackId: string;
+  }>;
+  albums?: Array<{
+    albumId: string;
+  }>;
 }
 
 const data: Record<string, EmotionData> = {
@@ -347,6 +356,29 @@ export default function CardCarousel() {
   
 
   const colors = Object.entries(data);
+
+   const loadUserFavorites = async () => {
+      try {
+        const response = await api.get<FavoritesResponse>('/api/ai-song/favorites');
+        const userFavorites = new Set<string>();
+        
+        response.data.tracks?.forEach((track) => {
+          userFavorites.add(track.trackId);
+        });
+        
+        response.data.albums?.forEach((album) => {
+          userFavorites.add(album.albumId);
+        });
+        
+        setFavorites(userFavorites);
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+      }
+    };
+    
+    useEffect(() => {
+      loadUserFavorites();
+    }, []);
 
   const handleMoodClick = (index: number) => {
     console.log(index);

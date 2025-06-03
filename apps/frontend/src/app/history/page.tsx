@@ -5,6 +5,32 @@ import { Music2, Heart, Clock, User, Sparkles, Play, Calendar, Filter, Search, T
 import api from "../utils/axios"
 import { useQuery } from '@tanstack/react-query';
 
+enum MoodType {
+  HAPPY = 'HAPPY',
+  SAD = 'SAD',
+  CALM = 'CALM',
+  ENERGETIC = 'ENERGETIC',
+  ANGRY = 'ANGRY',
+  RELAXED = 'RELAXED',
+  ROMANTIC = 'ROMANTIC',
+  NOSTALGIC = 'NOSTALGIC',
+  MELANCHOLIC = 'MELANCHOLIC',
+  UPBEAT = 'UPBEAT'
+}
+
+enum ActivityType {
+  WORKOUT = 'WORKOUT',
+  STUDY = 'STUDY',
+  RELAX = 'RELAX',
+  PARTY = 'PARTY',
+  COMMUTE = 'COMMUTE',
+  WORK = 'WORK',
+  SLEEP = 'SLEEP',
+  COOKING = 'COOKING',
+  CLEANING = 'CLEANING',
+  TRAVEL = 'TRAVEL'
+}
+
 interface HistoryTrack {
   trackId: string;
   name: string;
@@ -126,7 +152,11 @@ const HistoryCard = ({
       CALM: 'bg-green-100 text-green-800',
       ENERGETIC: 'bg-red-100 text-red-800',
       ANGRY: 'bg-red-100 text-red-800',
-      RELAXED: 'bg-purple-100 text-purple-800'
+      RELAXED: 'bg-purple-100 text-purple-800',
+      ROMANTIC: 'bg-pink-100 text-pink-800',
+      NOSTALGIC: 'bg-amber-100 text-amber-800',
+      MELANCHOLIC: 'bg-indigo-100 text-indigo-800',
+      UPBEAT: 'bg-orange-100 text-orange-800'
     };
     return colors[mood || ''] || 'bg-gray-100 text-gray-800';
   };
@@ -138,7 +168,11 @@ const HistoryCard = ({
       RELAX: 'bg-green-100 text-green-800',
       PARTY: 'bg-pink-100 text-pink-800',
       COMMUTE: 'bg-blue-100 text-blue-800',
-      WORK: 'bg-gray-100 text-gray-800'
+      WORK: 'bg-gray-100 text-gray-800',
+      SLEEP: 'bg-purple-100 text-purple-800',
+      COOKING: 'bg-yellow-100 text-yellow-800',
+      CLEANING: 'bg-teal-100 text-teal-800',
+      TRAVEL: 'bg-cyan-100 text-cyan-800'
     };
     return colors[activity || ''] || 'bg-gray-100 text-gray-800';
   };
@@ -372,14 +406,20 @@ export default function HistoryPage() {
         album.artistNames.some(artist => artist.toLowerCase().includes(searchQuery.toLowerCase()))
       );
 
-    const matchesMood = selectedMood === 'all' || item.mood === selectedMood.toUpperCase();
-    const matchesActivity = selectedActivity === 'all' || item.activity === selectedActivity.toUpperCase();
+    const matchesMood = selectedMood === 'all' || item.mood === selectedMood;
+    const matchesActivity = selectedActivity === 'all' || item.activity === selectedActivity;
 
     return matchesSearch && matchesMood && matchesActivity;
   });
 
-  const uniqueMoods = Array.from(new Set(history.map(item => item.mood).filter(Boolean)));
-  const uniqueActivities = Array.from(new Set(history.map(item => item.activity).filter(Boolean)));
+  // Convert enums to arrays for dropdown options
+  const moodOptions = Object.values(MoodType);
+  const activityOptions = Object.values(ActivityType);
+
+  // Helper function to format enum values for display
+  const formatEnumValue = (value: string) => {
+    return value.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen">
@@ -434,8 +474,10 @@ export default function HistoryPage() {
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
                   <option value="all">All Moods</option>
-                  {uniqueMoods.map(mood => (
-                    <option key={mood} value={mood}>{mood?.toLowerCase()}</option>
+                  {moodOptions.map(mood => (
+                    <option key={mood} value={mood}>
+                      {formatEnumValue(mood)}
+                    </option>
                   ))}
                 </select>
                 <select
@@ -444,8 +486,10 @@ export default function HistoryPage() {
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
                   <option value="all">All Activities</option>
-                  {uniqueActivities.map(activity => (
-                    <option key={activity} value={activity}>{activity?.toLowerCase()}</option>
+                  {activityOptions.map(activity => (
+                    <option key={activity} value={activity}>
+                      {formatEnumValue(activity)}
+                    </option>
                   ))}
                 </select>
               </div>

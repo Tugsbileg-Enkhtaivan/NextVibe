@@ -76,13 +76,178 @@ const userRecommendationCache = new Map<
 const CACHE_EXPIRATION = 6 * 60 * 60 * 1000;
 
 const convertToMoodType = (mood: string): MoodType => {
-  const moodUpper = mood.toUpperCase() as keyof typeof MoodType;
-  return MoodType[moodUpper] || MoodType.HAPPY;
+  if (!mood || typeof mood !== 'string') {
+    return MoodType.HAPPY;
+  }
+  
+  const cleanMood = mood.trim().toUpperCase().replace(/\s+/g, '_');
+  
+  const moodMappings: Record<string, MoodType> = {
+    'VERY_HAPPY': MoodType.VERY_HAPPY,
+    'VERYHAPPY': MoodType.VERY_HAPPY,
+    'SUPER_HAPPY': MoodType.VERY_HAPPY,
+    'ECSTATIC': MoodType.EXCITED,
+    'JOYFUL': MoodType.HAPPY,
+    'CHEERFUL': MoodType.HAPPY,
+    'DEPRESSED': MoodType.SAD,
+    'MELANCHOLY': MoodType.MELANCHOLIC,
+    'UPSET': MoodType.SAD,
+    'MAD': MoodType.ANGRY,
+    'FURIOUS': MoodType.ANGRY,
+    'PEACEFUL': MoodType.PEACEFUL,
+    'SERENE': MoodType.CALM,
+    'TRANQUIL': MoodType.RELAXED,
+    'CHILL': MoodType.CHILL,
+    'LAID_BACK': MoodType.CHILL,
+    'LAIDBACK': MoodType.CHILL,
+    'CONCENTRATE': MoodType.FOCUSED,
+    'CONCENTRATION': MoodType.FOCUSED,
+    'STUDYING': MoodType.FOCUSED,
+    'PARTYING': MoodType.PARTY,
+    'CELEBRATION': MoodType.PARTY,
+    'ROMANTIC': MoodType.ROMANTIC,
+    'LOVE': MoodType.ROMANTIC,
+    'NOSTALGIC': MoodType.NOSTALGIC,
+    'REMINISCENT': MoodType.NOSTALGIC,
+    'WORRIED': MoodType.ANXIETY,
+    'NERVOUS': MoodType.ANXIETY,
+    'ANXIOUS': MoodType.ANXIETY,
+    'SCARED': MoodType.FEAR,
+    'AFRAID': MoodType.FEAR,
+    'JEALOUS': MoodType.ENVY,
+    'ENVIOUS': MoodType.ENVY,
+    'DISGUSTED': MoodType.DISGUST,
+    'ASHAMED': MoodType.SHAME,
+    'EMBARRASSED': MoodType.SHAME,
+    'BORED': MoodType.ENNUI,
+    'BORING': MoodType.ENNUI,
+  };
+
+  if (moodMappings[cleanMood]) {
+    return moodMappings[cleanMood];
+  }
+
+  const moodKey = cleanMood as keyof typeof MoodType;
+  if (MoodType[moodKey]) {
+    return MoodType[moodKey];
+  }
+
+  return MoodType.HAPPY;
 };
 
 const convertToActivityType = (activity: string): ActivityType => {
-  const activityUpper = activity.toUpperCase() as keyof typeof ActivityType;
-  return ActivityType[activityUpper] || ActivityType.WORKOUT;
+  if (!activity || typeof activity !== 'string') {
+    return ActivityType.WORKOUT;
+  }
+  
+  const cleanActivity = activity.trim().toUpperCase().replace(/\s+/g, '_');
+  
+  const activityMappings: Record<string, ActivityType> = {
+    'EXERCISE': ActivityType.WORKOUT,
+    'FITNESS': ActivityType.WORKOUT,
+    'TRAINING': ActivityType.WORKOUT,
+    'LIFTING': ActivityType.GYM,
+    'WEIGHTLIFTING': ActivityType.GYM,
+    'CARDIO': ActivityType.WORKOUT,
+    'JOGGING': ActivityType.RUNNING,
+    'JOG': ActivityType.RUNNING,
+    'SPRINT': ActivityType.RUNNING,
+    'STROLL': ActivityType.WALKING,
+    'WALK': ActivityType.WALKING,
+    'HIKE': ActivityType.WALKING,
+    'HIKING': ActivityType.WALKING,
+    'CYCLE': ActivityType.BIKING,
+    'CYCLING': ActivityType.BIKING,
+    'BIKE': ActivityType.BIKING,
+    'STUDYING': ActivityType.STUDY,
+    'HOMEWORK': ActivityType.STUDY,
+    'RESEARCH': ActivityType.STUDY,
+    'LEARNING': ActivityType.STUDY,
+    'WORKING': ActivityType.WORK,
+    'JOB': ActivityType.WORK,
+    'OFFICE': ActivityType.WORK,
+    'BUSINESS': ActivityType.WORK,
+    'PARTYING': ActivityType.PARTY,
+    'CELEBRATING': ActivityType.PARTY,
+    'CELEBRATION': ActivityType.PARTY,
+    'RELAXING': ActivityType.RELAX,
+    'RESTING': ActivityType.RELAX,
+    'LOUNGING': ActivityType.RELAX,
+    'CHILLING': ActivityType.RELAX,
+    'CHILL': ActivityType.RELAX,
+    'COMMUTING': ActivityType.COMMUTE,
+    'DRIVING': ActivityType.COMMUTE,
+    'TRANSPORT': ActivityType.COMMUTE,
+    'PREPARING_FOOD': ActivityType.COOKING,
+    'FOOD_PREP': ActivityType.COOKING,
+    'KITCHEN': ActivityType.COOKING,
+    'BAKING': ActivityType.COOKING,
+    'CHEF': ActivityType.COOKING,
+    'TIDYING': ActivityType.CLEANING,
+    'HOUSEWORK': ActivityType.CLEANING,
+    'CHORES': ActivityType.CLEANING,
+    'SLEEPING': ActivityType.SLEEP,
+    'NAP': ActivityType.SLEEP,
+    'NAPPING': ActivityType.SLEEP,
+    'REST': ActivityType.SLEEP,
+    'BEDTIME': ActivityType.SLEEP,
+    'MINDFULNESS': ActivityType.MEDITATION,
+    'MEDITATE': ActivityType.MEDITATION,
+    'ZEN': ActivityType.MEDITATION,
+    'BOOK': ActivityType.READING,
+    'READ': ActivityType.READING,
+    'NOVEL': ActivityType.READING,
+    'LITERATURE': ActivityType.READING,
+    'GAME': ActivityType.GAMING,
+    'GAMES': ActivityType.GAMING,
+    'PLAY': ActivityType.GAMING,
+    'VIDEO_GAMES': ActivityType.GAMING,
+    'VIDEOGAMES': ActivityType.GAMING,
+    'SOCIAL': ActivityType.SOCIALIZING,
+    'FRIENDS': ActivityType.SOCIALIZING,
+    'HANGING_OUT': ActivityType.SOCIALIZING,
+    'HANGOUT': ActivityType.SOCIALIZING,
+    'TRIP': ActivityType.TRAVELING,
+    'TRAVEL': ActivityType.TRAVELING,
+    'VACATION': ActivityType.TRAVELING,
+    'JOURNEY': ActivityType.TRAVELING,
+    'SHOP': ActivityType.SHOPPING,
+    'SHOPPING': ActivityType.SHOPPING,
+    'MALL': ActivityType.SHOPPING,
+    'STORE': ActivityType.SHOPPING,
+    'DATE': ActivityType.DATING,
+    'DATING': ActivityType.DATING,
+    'ROMANCE': ActivityType.DATING,
+    'DANCE': ActivityType.DANCING,
+    'DANCING': ActivityType.DANCING,
+    'CLUB': ActivityType.DANCING,
+    'DISCO': ActivityType.DANCING,
+    'ART': ActivityType.DRAWING,
+    'DRAWING': ActivityType.DRAWING,
+    'PAINTING': ActivityType.DRAWING,
+    'SKETCH': ActivityType.DRAWING,
+    'CREATE': ActivityType.DRAWING,
+    'GARDEN': ActivityType.GARDENING,
+    'GARDENING': ActivityType.GARDENING,
+    'PLANTS': ActivityType.GARDENING,
+    'YARD_WORK': ActivityType.GARDENING,
+    'YARDWORK': ActivityType.GARDENING,
+    'DO_NOTHING': ActivityType.NOTHING,
+    'IDLE': ActivityType.NOTHING,
+    'WAITING': ActivityType.NOTHING,
+    'BORED': ActivityType.NOTHING,
+  };
+
+  if (activityMappings[cleanActivity]) {
+    return activityMappings[cleanActivity];
+  }
+
+  const activityKey = cleanActivity as keyof typeof ActivityType;
+  if (ActivityType[activityKey]) {
+    return ActivityType[activityKey];
+  }
+
+  return ActivityType.WORKOUT;
 };
 
 export const getAISongSuggestions = async (

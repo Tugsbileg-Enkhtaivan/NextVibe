@@ -1,8 +1,9 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Music2, Heart, Clock, User, Sparkles, Play, Calendar, Filter, Search, Trash2, Star } from 'lucide-react';
+import { Music2, Heart, Clock, User, Sparkles, Play, Calendar, Filter, Search, Trash2, Star, AlertCircle } from 'lucide-react';
 import api from "../utils/axios"
+import { useQuery } from '@tanstack/react-query';
 
 interface HistoryTrack {
   trackId: string;
@@ -35,68 +36,6 @@ interface RecommendationHistory {
   albums: HistoryAlbum[];
   parameters?: any;
 }
-
-// Mock data - replace with actual API call
-const mockHistoryData: RecommendationHistory[] = [
-  {
-    id: '1',
-    type: 'MOOD_BASED',
-    mood: 'HAPPY',
-    activity: 'WORKOUT',
-    genres: ['Pop', 'Electronic'],
-    createdAt: '2024-01-15T10:30:00Z',
-    tracks: [
-      {
-        trackId: '1',
-        name: 'Blinding Lights',
-        artistNames: ['The Weeknd'],
-        albumName: 'After Hours',
-        imageUrl: 'https://i.scdn.co/image/ab67616d0000b27334362676667a4322838ccc97',
-        previewUrl: 'https://example.com/preview1',
-        position: 0
-      },
-      {
-        trackId: '2',
-        name: 'Levitating',
-        artistNames: ['Dua Lipa'],
-        albumName: 'Future Nostalgia',
-        imageUrl: 'https://i.scdn.co/image/ab67616d0000b273fc3b782a6fb1c6cb1f5e3e4f',
-        previewUrl: 'https://example.com/preview2',
-        position: 1
-      }
-    ],
-    albums: [
-      {
-        albumId: '1',
-        name: 'After Hours',
-        artistNames: ['The Weeknd'],
-        imageUrl: 'https://i.scdn.co/image/ab67616d0000b27334362676667a4322838ccc97',
-        releaseDate: '2020-03-20',
-        totalTracks: 14,
-        position: 0
-      }
-    ]
-  },
-  {
-    id: '2',
-    type: 'MOOD_BASED',
-    mood: 'CALM',
-    activity: 'STUDY',
-    genres: ['Ambient', 'Classical'],
-    createdAt: '2024-01-14T14:20:00Z',
-    tracks: [
-      {
-        trackId: '3',
-        name: 'Weightless',
-        artistNames: ['Marconi Union'],
-        albumName: 'Ambient Spaces',
-        imageUrl: 'https://i.scdn.co/image/ab67616d0000b273b80c8d77a1c4f8d7c8b4e5f6',
-        position: 0
-      }
-    ],
-    albums: []
-  }
-];
 
 const MusicCard = ({
   title,
@@ -333,40 +272,92 @@ const HistoryCard = ({
   );
 };
 
+// Error component for auth issues
+const AuthError = ({ onRetry }: { onRetry: () => void }) => (
+  <div className="text-center py-12">
+    <div className="bg-red-100 rounded-full p-6 w-24 h-24 mx-auto mb-4">
+      <AlertCircle className="w-12 h-12 text-red-600 mx-auto" />
+    </div>
+    <h3 className="text-xl font-semibold text-gray-900 mb-2">Authentication Required</h3>
+    <p className="text-gray-600 mb-6">
+      Please sign in to view your recommendation history
+    </p>
+    <button
+      onClick={onRetry}
+      className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+    >
+      Retry
+    </button>
+  </div>
+);
+
 export default function HistoryPage() {
-  const [history, setHistory] = useState<RecommendationHistory[]>(mockHistoryData);
+  const [history, setHistory] = useState<RecommendationHistory[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMood, setSelectedMood] = useState<string>('all');
   const [selectedActivity, setSelectedActivity] = useState<string>('all');
 
-  // In a real app, you would fetch data from your API
-  useEffect(() => {
-    // fetchHistory();
-  }, []);
-
   const fetchHistory = async () => {
-    setLoading(true);
     try {
-      // Replace with actual API call
-      // const response = await api.get('/api/ai-song/history');
-      // setHistory(response.data);
-    } catch (error) {
+      setLoading(true);
+      setError(null);
+      setAuthError(false);
+      
+      // Add a small delay to ensure Clerk auth is ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const response = await api.get<RecommendationHistory[]>("/api/ai-song/history");
+      setHistory(response.data);
+    } catch (error: any) {
       console.error('Failed to fetch history:', error);
+      
+      if (error.response?.status === 401) {
+        setAuthError(true);
+        setError('Authentication required. Please sign in to view your history.');
+      } else {
+        setError('Failed to load recommendation history');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = (id: string) => {
-    setHistory(prev => prev.filter(item => item.id !== id));
-    // In a real app, also make API call to delete
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.delete(`/api/ai-song/history/${id}`);
+      setHistory(prev => prev.filter(item => item.id !== id));
+    } catch(error: any) {
+      console.error('Failed to delete history item:', error);
+      if (error.response?.status === 401) {
+        setAuthError(true);
+        setError('Authentication required');
+      } else {
+        setError('Failed to delete item');
+      }
+    }
   };
 
-  const clearAllHistory = () => {
+  const clearAllHistory = async () => {
     if (window.confirm('Are you sure you want to clear all history?')) {
-      setHistory([]);
-      // In a real app, make API call to clear history
+      try {
+        await api.delete('/api/ai-song/history');
+        setHistory([]);
+      } catch (error: any) {
+        console.error('Failed to clear history:', error);
+        if (error.response?.status === 401) {
+          setAuthError(true);
+          setError('Authentication required');
+        } else {
+          setError('Failed to clear history');
+        }
+      }
     }
   };
 
@@ -403,94 +394,117 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        {/* Search and Filters */}
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search songs, artists, albums..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
-            <select
-              value={selectedMood}
-              onChange={(e) => setSelectedMood(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              <option value="all">All Moods</option>
-              {uniqueMoods.map(mood => (
-                <option key={mood} value={mood}>{mood?.toLowerCase()}</option>
-              ))}
-            </select>
-            <select
-              value={selectedActivity}
-              onChange={(e) => setSelectedActivity(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              <option value="all">All Activities</option>
-              {uniqueActivities.map(activity => (
-                <option key={activity} value={activity}>{activity?.toLowerCase()}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+        {/* Show auth error */}
+        {authError && <AuthError onRetry={fetchHistory} />}
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="bg-purple-100 rounded-full p-2">
-                <Music2 className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{history.length}</p>
-                <p className="text-sm text-gray-600">Total Sessions</p>
-              </div>
+        {/* Show general error */}
+        {error && !authError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <p className="text-red-800">{error}</p>
             </div>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="bg-green-100 rounded-full p-2">
-                <Play className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {history.reduce((acc, item) => acc + item.tracks.length, 0)}
-                </p>
-                <p className="text-sm text-gray-600">Songs Discovered</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-100 rounded-full p-2">
-                <User className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {history.reduce((acc, item) => acc + item.albums.length, 0)}
-                </p>
-                <p className="text-sm text-gray-600">Albums Explored</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Clear History Button */}
-        {history.length > 0 && (
-          <div className="flex justify-end mb-4">
             <button
-              onClick={clearAllHistory}
-              className="flex items-center gap-2 px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+              onClick={fetchHistory}
+              className="mt-2 text-red-600 hover:text-red-700 underline"
             >
-              <Trash2 className="w-4 h-4" />
-              Clear All History
+              Try again
             </button>
           </div>
+        )}
+
+        {!authError && !loading && (
+          <>
+            {/* Search and Filters */}
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 mb-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search songs, artists, albums..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <select
+                  value={selectedMood}
+                  onChange={(e) => setSelectedMood(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="all">All Moods</option>
+                  {uniqueMoods.map(mood => (
+                    <option key={mood} value={mood}>{mood?.toLowerCase()}</option>
+                  ))}
+                </select>
+                <select
+                  value={selectedActivity}
+                  onChange={(e) => setSelectedActivity(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="all">All Activities</option>
+                  {uniqueActivities.map(activity => (
+                    <option key={activity} value={activity}>{activity?.toLowerCase()}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="bg-purple-100 rounded-full p-2">
+                    <Music2 className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">{history.length}</p>
+                    <p className="text-sm text-gray-600">Total Sessions</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="bg-green-100 rounded-full p-2">
+                    <Play className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {history.reduce((acc, item) => acc + item.tracks.length, 0)}
+                    </p>
+                    <p className="text-sm text-gray-600">Songs Discovered</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-100 rounded-full p-2">
+                    <User className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {history.reduce((acc, item) => acc + item.albums.length, 0)}
+                    </p>
+                    <p className="text-sm text-gray-600">Albums Explored</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Clear History Button */}
+            {history.length > 0 && (
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={clearAllHistory}
+                  className="flex items-center gap-2 px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Clear All History
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -499,7 +513,7 @@ export default function HistoryPage() {
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
         </div>
-      ) : filteredHistory.length === 0 ? (
+      ) : !authError && filteredHistory.length === 0 ? (
         <div className="text-center py-12">
           <div className="bg-gray-100 rounded-full p-6 w-24 h-24 mx-auto mb-4">
             <Clock className="w-12 h-12 text-gray-400 mx-auto" />
@@ -517,7 +531,7 @@ export default function HistoryPage() {
             }
           </p>
         </div>
-      ) : (
+      ) : !authError && (
         <div className="space-y-6">
           {filteredHistory.map((recommendation) => (
             <HistoryCard

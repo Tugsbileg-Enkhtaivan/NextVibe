@@ -285,17 +285,31 @@ export default function HomePage() {
     }
   };
 
-  const { isLoaded, userId } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth(); 
+
   useEffect(() => {
-    if (isLoaded) {
-      if (userId) {
-        loadUserFavorites();
-      } else {
+    const initAuth = async () => {
+      if (!isLoaded) {
+        return;
+      }
+  
+      if (!isSignedIn) {
+        setFavorites(new Set());
+        setFavoritesLoaded(true);
+        return;
+      }
+  
+      try {
+        await loadUserFavorites();
+      } catch (error) {
+        console.error('Failed to load favorites:', error);
         setFavorites(new Set());
         setFavoritesLoaded(true);
       }
-    }
-  }, [isLoaded, userId]);
+    };
+    
+    initAuth();
+  }, [isLoaded, isSignedIn]);
 
   const handleSubmit = async () => {
     if (!mood || !genre || !activity) {
@@ -367,7 +381,7 @@ export default function HomePage() {
       }
       
       alert(errorMessage);
-      throw error; // Re-throw to let the component handle loading states
+      throw error; 
     }
   };
 

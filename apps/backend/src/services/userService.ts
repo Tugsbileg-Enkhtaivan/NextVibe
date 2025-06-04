@@ -63,7 +63,6 @@ export const saveUserRecommendationHistory = async (
   recommendation: RecommendationData
 ) => {
   try {
-    // Ensure user exists first
     await ensureUserExistsInService(userId);
 
     const savedRecommendation = await prisma.recommendation.create({
@@ -181,7 +180,7 @@ export const saveMoodEntry = async (
     console.log(`✅ Mood entry saved for user ${userId}`);
     return moodEntry;
   } catch (error) {
-    console.error('❌ Error saving mood entry:', error);
+    console.error('Error saving mood entry:', error);
     throw new Error('Failed to save mood entry');
   }
 };
@@ -194,12 +193,10 @@ export const addToUserFavorites = async (
   try {
     console.log(`🔄 Adding to favorites - User: ${userId}, Item: ${itemId}, Type: ${itemType}`);
 
-    // Ensure user exists first
     await ensureUserExistsInService(userId);
 
     const favoriteType: FavoriteType = itemType.toUpperCase() as FavoriteType;
     
-    // Check if already exists
     const existing = await prisma.favorite.findFirst({
       where: {
         userId,
@@ -218,7 +215,6 @@ export const addToUserFavorites = async (
     let imageUrl = '';
     let metadata: any = {};
 
-    // Fetch detailed information based on item type
     if (itemType === 'track') {
       try {
         console.log(`🔍 Fetching track details for ${itemId}`);
@@ -241,7 +237,6 @@ export const addToUserFavorites = async (
           console.log(`✅ Track details fetched: ${name} by ${artistNames.join(', ')}`);
         } else {
           console.warn(`⚠️ No track found for ID: ${itemId}`);
-          // Try alternative search method
           const directResult = await searchTracks(`id:${itemId}`, 1);
           if (isTrackSearchResponse(directResult) && directResult.tracks.items.length > 0) {
             const track = directResult.tracks.items[0];
@@ -261,7 +256,6 @@ export const addToUserFavorites = async (
         }
       } catch (searchError) {
         console.warn(`⚠️ Failed to fetch track details for ${itemId}:`, searchError);
-        // Continue with unknown values - better to save something than fail
       }
     } else if (itemType === 'album') {
       try {
@@ -282,7 +276,6 @@ export const addToUserFavorites = async (
           console.log(`✅ Album details fetched: ${name} by ${artistNames.join(', ')}`);
         } else {
           console.warn(`⚠️ No album found for ID: ${itemId}`);
-          // Try alternative search method
           const directResult = await searchAlbums(`id:${itemId}`, 1);
           if (isAlbumSearchResponse(directResult) && directResult.albums.items.length > 0) {
             const album = directResult.albums.items[0];
@@ -299,11 +292,9 @@ export const addToUserFavorites = async (
         }
       } catch (searchError) {
         console.warn(`⚠️ Failed to fetch album details for ${itemId}:`, searchError);
-        // Continue with unknown values
       }
     }
 
-    // Create the favorite record
     const favorite = await prisma.favorite.create({
       data: {
         userId,
@@ -320,7 +311,7 @@ export const addToUserFavorites = async (
     return favorite;
     
   } catch (error: any) {
-    console.error('❌ Error adding to favorites:', error);
+    console.error('Error adding to favorites:', error);
     
     if (error.code === 'P2003') {
       throw new Error('User not found. Please ensure user is properly authenticated.');

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Heart, Music2, Play, Youtube, Trash2, Filter, Grid, List } from 'lucide-react';
+import { Heart, Music2, Play, Youtube, Trash2, Grid, List, ChevronDown } from 'lucide-react';
 import api from '../utils/axios';
 
 interface Song {
@@ -16,7 +16,7 @@ interface Song {
     videoId: string;
     title: string;
     thumbnail: string;
-    url: string;  
+    url: string;
   } | null;
 }
 
@@ -46,11 +46,11 @@ interface FavoritesResponse {
   albums?: FavoriteAlbum[];
 }
 
-const MusicCard = ({ 
-  title, 
-  artist, 
-  album, 
-  cover, 
+const MusicCard = ({
+  title,
+  artist,
+  album,
+  cover,
   type = "song",
   previewUrl,
   spotifyUrl,
@@ -78,8 +78,8 @@ const MusicCard = ({
   createdAt?: string;
 }) => {
   const [favoriteLoading, setFavoriteLoading] = useState(false);
-  
-  const youtubeUrl = youtubeData?.videoId 
+
+  const youtubeUrl = youtubeData?.videoId
     ? `https://www.youtube.com/watch?v=${youtubeData.videoId}`
     : null;
 
@@ -91,7 +91,7 @@ const MusicCard = ({
 
   const handleFavoriteClick = async () => {
     if (!itemId || !onFavoriteToggle) return;
-    
+
     setFavoriteLoading(true);
     try {
       await onFavoriteToggle(itemId, type, isFavorited || false);
@@ -145,9 +145,9 @@ const MusicCard = ({
           )}
           <div className="flex gap-2 mt-2 flex-wrap">
             {spotifyUrl && (
-              <a 
-                href={spotifyUrl} 
-                target="_blank" 
+              <a
+                href={spotifyUrl}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full hover:bg-green-200 transition-colors"
               >
@@ -155,7 +155,7 @@ const MusicCard = ({
               </a>
             )}
             {previewUrl && (
-              <button 
+              <button
                 onClick={() => {
                   const audio = new Audio(previewUrl);
                   audio.play().catch(e => console.warn('Preview play failed:', e));
@@ -166,7 +166,7 @@ const MusicCard = ({
               </button>
             )}
             {type === "song" && youtubeUrl && (
-              <button 
+              <button
                 onClick={handleYouTubePlay}
                 className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full hover:bg-red-200 transition-colors flex items-center gap-1"
               >
@@ -176,14 +176,13 @@ const MusicCard = ({
             )}
           </div>
         </div>
-        <button 
+        <button
           onClick={handleFavoriteClick}
           disabled={favoriteLoading}
-          className={`p-2 rounded-full transition-all duration-200 ${
-            favoriteLoading 
-              ? 'opacity-50 cursor-not-allowed' 
-              : 'hover:bg-red-50'
-          }`}
+          className={`p-2 rounded-full transition-all duration-200 ${favoriteLoading
+            ? 'opacity-50 cursor-not-allowed'
+            : 'hover:bg-red-50'
+            }`}
           title="Remove from favorites"
         >
           {favoriteLoading ? (
@@ -209,7 +208,7 @@ export default function FavoritesPage() {
     try {
       setLoading(true);
       const response = await api.get<FavoritesResponse>('/api/ai-song/favorites');
-      
+
       setFavoritesTracks(response.data.tracks || []);
       setFavoritesAlbums(response.data.albums || []);
     } catch (error) {
@@ -227,7 +226,7 @@ export default function FavoritesPage() {
     try {
       if (isFavorited) {
         await api.delete(`/api/ai-song/favorites/${itemId}`);
-        
+
         if (itemType === 'song') {
           setFavoritesTracks(prev => prev.filter(track => track.trackId !== itemId));
         } else {
@@ -284,19 +283,19 @@ export default function FavoritesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50">
+    <div className="max-w-4xl mx-auto min-h-screen bg-gradient-to-r from-red-500 to-pink-500">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="bg-gradient-to-r from-red-500 to-pink-500 p-3 rounded-full">
+            <div className="bg-gradient-to-r from-red-500 to-pink-500 p-3 rounded-full border-2">
               <Heart className="w-8 h-8 text-white fill-white" />
             </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-red-500 to-pink-500 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bold text-white">
               My Favorites
             </h1>
           </div>
-          <p className="text-gray-600 text-lg">
+          <p className="text-white text-lg">
             Your personal collection of loved music
           </p>
         </div>
@@ -311,53 +310,54 @@ export default function FavoritesPage() {
                   <button
                     key={filterOption}
                     onClick={() => setFilter(filterOption)}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                      filter === filterOption
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === filterOption
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
                   >
                     {filterOption.charAt(0).toUpperCase() + filterOption.slice(1)}
                   </button>
                 ))}
               </div>
-              
+
               {/* Sort dropdown */}
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 font-medium"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="alphabetical">A-Z</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="appearance-none px-4 py-2 rounded-lg border border-gray-200 bg-white font-medium pr-8 text-gray-500"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="alphabetical">A-Z</option>
+                </select>
+                <ChevronDown size={18} className="absolute top-1/2 -translate-y-1/2 left-[116px] pointer-events-none" />
+              </div>
+
             </div>
 
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-500">
                 {totalItems} item{totalItems !== 1 ? 's' : ''}
               </span>
-              
+
               {/* View mode toggle */}
               <div className="flex gap-1">
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'list'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className={`p-2 rounded-lg transition-colors ${viewMode === 'list'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
                 >
                   <List className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'grid'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className={`p-2 rounded-lg transition-colors ${viewMode === 'grid'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
                 >
                   <Grid className="w-4 h-4" />
                 </button>
@@ -390,11 +390,10 @@ export default function FavoritesPage() {
                     Favorite Songs ({filteredTracks.length})
                   </h2>
                 </div>
-                <div className={`grid gap-4 ${
-                  viewMode === 'grid' 
-                    ? 'md:grid-cols-1 lg:grid-cols-2' 
-                    : 'grid-cols-1'
-                }`}>
+                <div className={`grid gap-4 ${viewMode === 'grid'
+                  ? 'md:grid-cols-1 lg:grid-cols-2'
+                  : 'grid-cols-1'
+                  }`}>
                   {filteredTracks.map((favoriteTrack) => (
                     <MusicCard
                       key={favoriteTrack.trackId}
@@ -425,11 +424,10 @@ export default function FavoritesPage() {
                     Favorite Albums ({filteredAlbums.length})
                   </h2>
                 </div>
-                <div className={`grid gap-4 ${
-                  viewMode === 'grid' 
-                    ? 'md:grid-cols-1 lg:grid-cols-2' 
-                    : 'grid-cols-1'
-                }`}>
+                <div className={`grid gap-4 ${viewMode === 'grid'
+                  ? 'md:grid-cols-1 lg:grid-cols-2'
+                  : 'grid-cols-1'
+                  }`}>
                   {filteredAlbums.map((favoriteAlbum) => (
                     <MusicCard
                       key={favoriteAlbum.albumId}

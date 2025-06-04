@@ -8,7 +8,7 @@ import "swiper/css/effect-cards";
 import "swiper/css/pagination";
 
 import Image from "next/image";
-import { useRef, useState ,useEffect} from "react";
+import { useRef, useState, useEffect } from "react";
 import FlipSwiperGenre from "../components/FlipSwiperGenre";
 import FlipSwiperActivity from "../components/FlipSwiperActivity";
 import api from "../utils/axios";
@@ -227,8 +227,8 @@ const MusicCard = ({
   isFavorited?: boolean;
 }) => {
   const [favoriteLoading, setFavoriteLoading] = useState(false);
-  
-  const youtubeUrl = youtubeData?.videoId 
+
+  const youtubeUrl = youtubeData?.videoId
     ? `https://www.youtube.com/watch?v=${youtubeData.videoId}`
     : null;
 
@@ -240,7 +240,7 @@ const MusicCard = ({
 
   const handleFavoriteClick = async () => {
     if (!itemId || !onFavoriteToggle) return;
-    
+
     setFavoriteLoading(true);
     try {
       await onFavoriteToggle(itemId, type, isFavorited || false);
@@ -280,9 +280,9 @@ const MusicCard = ({
           )}
           <div className="flex gap-2 mt-2 flex-wrap">
             {spotifyUrl && (
-              <a 
-                href={spotifyUrl} 
-                target="_blank" 
+              <a
+                href={spotifyUrl}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full hover:bg-green-200 transition-colors"
               >
@@ -290,7 +290,7 @@ const MusicCard = ({
               </a>
             )}
             {previewUrl && (
-              <button 
+              <button
                 onClick={() => {
                   const audio = new Audio(previewUrl);
                   audio.play().catch(e => console.warn('Preview play failed:', e));
@@ -301,7 +301,7 @@ const MusicCard = ({
               </button>
             )}
             {type === "song" && youtubeUrl && (
-              <button 
+              <button
                 onClick={handleYouTubePlay}
                 className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full hover:bg-red-200 transition-colors flex items-center gap-1"
               >
@@ -311,24 +311,22 @@ const MusicCard = ({
             )}
           </div>
         </div>
-        <button 
+        <button
           onClick={handleFavoriteClick}
           disabled={favoriteLoading}
-          className={`p-2 rounded-full transition-all duration-200 ${
-            favoriteLoading 
-              ? 'opacity-50 cursor-not-allowed' 
-              : 'hover:bg-gray-100'
-          }`}
+          className={`p-2 rounded-full transition-all duration-200 ${favoriteLoading
+            ? 'opacity-50 cursor-not-allowed'
+            : 'hover:bg-gray-100'
+            }`}
         >
           {favoriteLoading ? (
             <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
           ) : (
-            <Heart 
-              className={`w-5 h-5 transition-colors ${
-                isFavorited 
-                  ? 'text-red-500 fill-red-500' 
-                  : 'text-gray-400 hover:text-red-500'
-              }`} 
+            <Heart
+              className={`w-5 h-5 transition-colors ${isFavorited
+                ? 'text-red-500 fill-red-500'
+                : 'text-gray-400 hover:text-red-500'
+                }`}
             />
           )}
         </button>
@@ -348,32 +346,32 @@ export default function CardCarousel() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  
+
 
   const colors = Object.entries(data);
 
-   const loadUserFavorites = async () => {
-      try {
-        const response = await api.get<FavoritesResponse>('/api/ai-song/favorites');
-        const userFavorites = new Set<string>();
-        
-        response.data.tracks?.forEach((track) => {
-          userFavorites.add(track.trackId);
-        });
-        
-        response.data.albums?.forEach((album) => {
-          userFavorites.add(album.albumId);
-        });
-        
-        setFavorites(userFavorites);
-      } catch (error) {
-        console.error('Error loading favorites:', error);
-      }
-    };
-    
-    useEffect(() => {
-      loadUserFavorites();
-    }, []);
+  const loadUserFavorites = async () => {
+    try {
+      const response = await api.get<FavoritesResponse>('/api/ai-song/favorites');
+      const userFavorites = new Set<string>();
+
+      response.data.tracks?.forEach((track) => {
+        userFavorites.add(track.trackId);
+      });
+
+      response.data.albums?.forEach((album) => {
+        userFavorites.add(album.albumId);
+      });
+
+      setFavorites(userFavorites);
+    } catch (error) {
+      console.error('Error loading favorites:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadUserFavorites();
+  }, []);
 
   const handleMoodClick = (index: number) => {
     console.log(index);
@@ -431,33 +429,34 @@ export default function CardCarousel() {
     }
   };
 
-    const handleFavoriteToggle = async (itemId: string, itemType: string, isFavorited: boolean) => {
-      try {
-        if (isFavorited) {
-          await api.delete(`/api/ai-song/favorites/${itemId}`);
-          setFavorites(prev => {
-            const newFavorites = new Set(prev);
-            newFavorites.delete(itemId);
-            return newFavorites;
-          });
-        } else {
-          await api.post("/api/ai-song/favorites", {
-            itemId,
-            itemType
-          });
-          setFavorites(prev => new Set([...prev, itemId]));
-        }
-      } catch (error) {
-        console.error('Error toggling favorite:', error);
-        alert('Failed to update favorites. Please try again.');
+  const handleFavoriteToggle = async (itemId: string, itemType: string, isFavorited: boolean) => {
+    try {
+      if (isFavorited) {
+        await api.delete(`/api/ai-song/favorites/${itemId}`);
+        setFavorites(prev => {
+          const newFavorites = new Set(prev);
+          newFavorites.delete(itemId);
+          return newFavorites;
+        });
+      } else {
+        await api.post("/api/ai-song/favorites", {
+          itemId,
+          itemType
+        });
+        setFavorites(prev => new Set([...prev, itemId]));
       }
-    };
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      alert('Failed to update favorites. Please try again.');
+    }
+  };
 
   return (
     <div
-      className="max-w-[430px] w-full min-h-screen mx-auto space-y-4 bg-black py-6 bg-center bg-cover overflow-hidden pt-12 relative"
+      className="max-w-4xl w-full min-h-screen mx-auto space-y-4 bg-black py-6 bg-center bg-cover overflow-hidden pt-12 relative"
       style={{ backgroundImage: `${colors[index][1].color}` }}
     >
+      <div className="w-full h-full bg-black absolute top-0 z-1 opacity-5"></div>
       <Header />
       <div className="w-full h-screen absolute [&>*]:absolute">
         <img
@@ -625,7 +624,7 @@ export default function CardCarousel() {
         <h1
           className="relative text-white text-3xl text-center font-bold z-2
                 transition-all duration-700 ease-in-out transform font-[inter]">
-          SELECT YOUR MOOD
+          JUST SELECT
         </h1>
         <Swiper
           effect="cards"
@@ -672,9 +671,9 @@ export default function CardCarousel() {
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className={`
+          className={`cursor-pointer
     text-white border-2 border-white rounded-full py-2 px-3 font-bold text-lg bg-purple-500 relative flex justify-self-center 
-    transition-all duration-700 ease-in-out transform cursor-pointer
+    transition-all duration-700 ease-in-out transform z-10
     ${loading ? "opacity-50 cursor-not-allowed" : ""}
   `}
         >
@@ -759,6 +758,7 @@ export default function CardCarousel() {
                   </div>
                 </div>
               )}
+
             </div>
           )}
         </div>

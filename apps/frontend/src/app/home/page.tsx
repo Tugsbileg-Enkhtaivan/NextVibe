@@ -12,7 +12,7 @@ import { useRef, useState, useEffect } from "react";
 import FlipSwiperGenre from "../components/FlipSwiperGenre";
 import FlipSwiperActivity from "../components/FlipSwiperActivity";
 import api from "../utils/axios";
-import { Music2, Heart, Play } from "lucide-react";
+import { Music2, Heart, Play, ArrowDown } from "lucide-react";
 import Header from "../components/Header";
 
 type EmotionData = {
@@ -346,6 +346,8 @@ export default function CardCarousel() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [lastActivity, setLastActivity] = useState<string>("");
+
 
 
   const colors = Object.entries(data);
@@ -381,6 +383,7 @@ export default function CardCarousel() {
     const currentMood = Object.entries(data)[index][0];
     const currentGenre = Object.entries(topMusicGenres)[genreIndex][0];
     const currentActivity = Object.entries(topActivities)[activityIndex][0];
+    setLastActivity(currentActivity); /// SPECIAL FOR CODERS
 
     console.log("Current selections:", {
       currentMood,
@@ -697,7 +700,7 @@ export default function CardCarousel() {
         )}
 
         {/* Results */}
-        <div className="relative z-10 transition-all duration-700 ease-in-out transform">
+        <div className="max-w-xl mx-auto relative z-10 transition-all duration-700 ease-in-out transform">
           {(songs.length > 0 || albums.length > 0) && (
             <div className="space-y-8">
               {songs.length > 0 && (
@@ -758,7 +761,17 @@ export default function CardCarousel() {
                   </div>
                 </div>
               )}
-
+              {lastActivity === "Coding" &&
+                <div className="flex flex-col justify-center items-center gap-5 px-10">
+                  <div className="flex items-center gap-2">
+                    <img src="/assets/lol.webp" className="w-8" />
+                    <h2 className="text-2xl text-white font-bold">Special for coders</h2>
+                    <img src="/assets/lol.webp" className="w-8" />
+                  </div>
+                  <img src="/assets/special-tap.webp" className="w-10 rotate-180" />
+                  <a target="blank" href="https://www.youtube.com/watch?v=WaNPyFrHje4"><img src="/assets/special.webp" className="w-20" /></a>
+                </div>
+              }
             </div>
           )}
         </div>

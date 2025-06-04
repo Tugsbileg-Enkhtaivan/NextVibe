@@ -48,6 +48,7 @@ export const ensureUserExistsInService = async (userId: string) => {
     return user;
   } catch (error: any) {
     if (error.code === 'P2002') {
+      // User already exists (race condition)
       return await prisma.user.findUnique({
         where: { id: userId },
         include: { profile: true }
@@ -191,28 +192,14 @@ export const addToUserFavorites = async (
   itemType: 'track' | 'album' | 'artist' | 'playlist'
 ) => {
   try {
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+    console.log(`🔄 Adding to favorites - User: ${userId}, Item: ${itemId}, Type: ${itemType}`);
 
-    if (!existingUser) {
-      try {
-        await prisma.user.create({
-          data: {
-            id: userId,
-            email: `${userId}@temp.com`, 
-            username: `user_${userId.substring(0, 8)}`, 
-          }
-        });
-      } catch (createError: any) {
-        if (createError.code !== 'P2002') {
-          throw createError;
-        }
-      }
-    }
+    // Ensure user exists first
+    await ensureUserExistsInService(userId);
 
     const favoriteType: FavoriteType = itemType.toUpperCase() as FavoriteType;
     
+    // Check if already exists
     const existing = await prisma.favorite.findFirst({
       where: {
         userId,
@@ -221,16 +208,22 @@ export const addToUserFavorites = async (
       }
     });
 
-    if (existing) return existing;
+    if (existing) {
+      console.log(`⚠️ Item ${itemId} already in favorites for user ${userId}`);
+      throw new Error('Item already exists in favorites');
+    }
 
     let name = 'Unknown';
     let artistNames: string[] = ['Unknown'];
     let imageUrl = '';
     let metadata: any = {};
 
+    // Fetch detailed information based on item type
     if (itemType === 'track') {
       try {
-        const result = await searchTracks(`id:${itemId}`);
+        console.log(`🔍 Fetching track details for ${itemId}`);
+        const result = await searchTracks(`track:${itemId}`, 1);
+        
         if (isTrackSearchResponse(result) && result.tracks.items.length > 0) {
           const track = result.tracks.items[0];
           name = track.name;
@@ -242,15 +235,39 @@ export const addToUserFavorites = async (
             previewUrl: track.preview_url,
             duration: track.duration_ms,
             popularity: track.popularity,
-            spotifyUrl: track.external_urls?.spotify || null
+            spotifyUrl: track.external_urls?.spotify || null,
+            explicit: track.explicit || false
           };
+          console.log(`✅ Track details fetched: ${name} by ${artistNames.join(', ')}`);
+        } else {
+          console.warn(`⚠️ No track found for ID: ${itemId}`);
+          // Try alternative search method
+          const directResult = await searchTracks(`id:${itemId}`, 1);
+          if (isTrackSearchResponse(directResult) && directResult.tracks.items.length > 0) {
+            const track = directResult.tracks.items[0];
+            name = track.name;
+            artistNames = track.artists.map(artist => artist.name);
+            imageUrl = track.album.images?.[0]?.url || '';
+            metadata = {
+              albumId: track.album.id,
+              albumName: track.album.name,
+              previewUrl: track.preview_url,
+              duration: track.duration_ms,
+              popularity: track.popularity,
+              spotifyUrl: track.external_urls?.spotify || null,
+              explicit: track.explicit || false
+            };
+          }
         }
       } catch (searchError) {
-        console.warn(`Failed to fetch track details for ${itemId}:`, searchError);
+        console.warn(`⚠️ Failed to fetch track details for ${itemId}:`, searchError);
+        // Continue with unknown values - better to save something than fail
       }
     } else if (itemType === 'album') {
       try {
-        const result = await searchAlbums(`id:${itemId}`);
+        console.log(`🔍 Fetching album details for ${itemId}`);
+        const result = await searchAlbums(`album:${itemId}`, 1);
+        
         if (isAlbumSearchResponse(result) && result.albums.items.length > 0) {
           const album = result.albums.items[0];
           name = album.name;
@@ -259,15 +276,35 @@ export const addToUserFavorites = async (
           metadata = {
             releaseDate: album.release_date,
             totalTracks: album.total_tracks,
-            spotifyUrl: album.external_urls?.spotify || null
+            spotifyUrl: album.external_urls?.spotify || null,
+            albumType: album.album_type
           };
+          console.log(`✅ Album details fetched: ${name} by ${artistNames.join(', ')}`);
+        } else {
+          console.warn(`⚠️ No album found for ID: ${itemId}`);
+          // Try alternative search method
+          const directResult = await searchAlbums(`id:${itemId}`, 1);
+          if (isAlbumSearchResponse(directResult) && directResult.albums.items.length > 0) {
+            const album = directResult.albums.items[0];
+            name = album.name;
+            artistNames = album.artists.map(artist => artist.name);
+            imageUrl = album.images?.[0]?.url || '';
+            metadata = {
+              releaseDate: album.release_date,
+              totalTracks: album.total_tracks,
+              spotifyUrl: album.external_urls?.spotify || null,
+              albumType: album.album_type
+            };
+          }
         }
       } catch (searchError) {
-        console.warn(`Failed to fetch album details for ${itemId}:`, searchError);
+        console.warn(`⚠️ Failed to fetch album details for ${itemId}:`, searchError);
+        // Continue with unknown values
       }
     }
 
-    return await prisma.favorite.create({
+    // Create the favorite record
+    const favorite = await prisma.favorite.create({
       data: {
         userId,
         itemId,
@@ -278,12 +315,26 @@ export const addToUserFavorites = async (
         metadata
       }
     });
+
+    console.log(`✅ Successfully added ${name} to favorites for user ${userId}`);
+    return favorite;
+    
   } catch (error: any) {
-    console.error('Error adding to favorites:', error);
+    console.error('❌ Error adding to favorites:', error);
+    
     if (error.code === 'P2003') {
       throw new Error('User not found. Please ensure user is properly authenticated.');
     }
-    throw new Error('Failed to add item to favorites');
+    
+    if (error.code === 'P2002') {
+      throw new Error('Item already exists in favorites');
+    }
+    
+    if (error.message.includes('already exists')) {
+      throw error; // Re-throw our custom error
+    }
+    
+    throw new Error(`Failed to add item to favorites: ${error.message}`);
   }
 };
 
@@ -292,31 +343,36 @@ export const removeFromUserFavorites = async (
   itemId: string
 ) => {
   try {
-    return await prisma.favorite.deleteMany({
-      where: { userId, itemId }
+    console.log(`🔄 Removing from favorites - User: ${userId}, Item: ${itemId}`);
+    
+    const result = await prisma.favorite.deleteMany({
+      where: { 
+        userId, 
+        itemId 
+      }
     });
-  } catch (error) {
-    console.error('Error removing from favorites:', error);
-    throw new Error('Failed to remove item from favorites');
+    
+    console.log(`✅ Removed ${result.count} favorite(s) for user ${userId}`);
+    return result;
+    
+  } catch (error: any) {
+    console.error('❌ Error removing from favorites:', error);
+    throw new Error(`Failed to remove item from favorites: ${error.message}`);
   }
 };
 
 export const getUserFavorites = async (userId: string) => {
   try {
-    // Check if user exists first
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!existingUser) {
-      console.warn(`User ${userId} not found in database`);
-      return { tracks: [], albums: [], artists: [], playlists: [] };
-    }
+    console.log(`🔄 Getting favorites for user: ${userId}`);
+    
+    await ensureUserExistsInService(userId);
 
     const favorites = await prisma.favorite.findMany({
       where: { userId },
       orderBy: { addedAt: 'desc' }
     });
+
+    console.log(`✅ Found ${favorites.length} favorites for user ${userId}`);
 
     const tracks = favorites
       .filter(fav => fav.type === 'TRACK')
@@ -326,13 +382,14 @@ export const getUserFavorites = async (userId: string) => {
         artistName: fav.artistNames[0] || 'Unknown',
         artistNames: fav.artistNames,
         albumId: (fav.metadata as any)?.albumId,
-        albumName: (fav.metadata as any)?.albumName,
+        albumName: (fav.metadata as any)?.albumName || 'Unknown Album',
         albumCover: fav.imageUrl,
         previewUrl: (fav.metadata as any)?.previewUrl,
         duration: (fav.metadata as any)?.duration,
         popularity: (fav.metadata as any)?.popularity,
         spotifyUrl: (fav.metadata as any)?.spotifyUrl,
-        addedAt: fav.addedAt
+        addedAt: fav.addedAt,
+        explicit: (fav.metadata as any)?.explicit || false
       }));
 
     const albums = favorites
@@ -346,6 +403,7 @@ export const getUserFavorites = async (userId: string) => {
         releaseDate: (fav.metadata as any)?.releaseDate,
         totalTracks: (fav.metadata as any)?.totalTracks,
         spotifyUrl: (fav.metadata as any)?.spotifyUrl,
+        albumType: (fav.metadata as any)?.albumType,
         addedAt: fav.addedAt
       }));
 
@@ -370,9 +428,16 @@ export const getUserFavorites = async (userId: string) => {
       }));
 
     return { tracks, albums, artists, playlists };
-  } catch (error) {
-    console.error('Error retrieving favorites:', error);
-    return { tracks: [], albums: [], artists: [], playlists: [] };
+    
+  } catch (error: any) {
+    console.error('❌ Error retrieving favorites:', error);
+    
+    if (error.message.includes('User') && error.message.includes('not found')) {
+      console.warn(`User ${userId} not found, returning empty favorites`);
+      return { tracks: [], albums: [], artists: [], playlists: [] };
+    }
+    
+    throw new Error(`Failed to retrieve favorites: ${error.message}`);
   }
 };
 

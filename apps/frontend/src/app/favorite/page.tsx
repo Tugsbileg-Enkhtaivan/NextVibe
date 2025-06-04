@@ -1,17 +1,24 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Heart, Music2, Play, Youtube, Trash2, Filter, Grid, List } from 'lucide-react';
+import { Heart, Music2, Play, Youtube, Trash2, Filter, Grid, List, AlertCircle, RefreshCw } from 'lucide-react';
 import api from '../utils/axios';
 
 interface Song {
+  trackId?: string;
+  trackName?: string;
   songName?: string;
   artistName?: string;
+  artistNames?: string[];
+  albumId?: string;
   albumName?: string;
   albumCover?: string | null;
-  songId?: string;
   previewUrl?: string | null;
   spotifyUrl?: string;
+  duration?: number;
+  popularity?: number;
+  explicit?: boolean;
+  addedAt?: string;
   youtubeData?: {
     videoId: string;
     title: string;
@@ -21,29 +28,23 @@ interface Song {
 }
 
 interface Album {
+  albumId?: string;
   albumName?: string;
   artistName?: string;
+  artistNames?: string[];
   albumCover?: string | null;
-  albumId?: string;
   spotifyUrl?: string;
   releaseDate?: string | null;
-}
-
-interface FavoriteTrack {
-  trackId: string;
-  createdAt: string;
-  song?: Song;
-}
-
-interface FavoriteAlbum {
-  albumId: string;
-  createdAt: string;
-  album?: Album;
+  totalTracks?: number;
+  albumType?: string;
+  addedAt?: string;
 }
 
 interface FavoritesResponse {
-  tracks?: FavoriteTrack[];
-  albums?: FavoriteAlbum[];
+  tracks: Song[];
+  albums: Album[];
+  artists?: any[];
+  playlists?: any[];
 }
 
 const MusicCard = ({ 
@@ -73,11 +74,12 @@ const MusicCard = ({
     thumbnail: string;
   } | null;
   itemId?: string;
-  onFavoriteToggle?: (itemId: string, itemType: string, isFavorited: boolean) => void;
+  onFavoriteToggle?: (itemId: string, itemType: string, isFavorited: boolean) => Promise<void>;
   isFavorited?: boolean;
   createdAt?: string;
 }) => {
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const youtubeUrl = youtubeData?.videoId 
     ? `https://www.youtube.com/watch?v=${youtubeData.videoId}`
@@ -93,10 +95,14 @@ const MusicCard = ({
     if (!itemId || !onFavoriteToggle) return;
     
     setFavoriteLoading(true);
+    setError(null);
+    
     try {
       await onFavoriteToggle(itemId, type, isFavorited || false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling favorite:', error);
+      setError(error.message || 'Failed to remove from favorites. Please try again.');
+      setTimeout(() => setError(null), 3000);
     } finally {
       setFavoriteLoading(false);
     }
@@ -104,15 +110,26 @@ const MusicCard = ({
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch {
+      return '';
+    }
   };
 
   return (
     <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
+      {error && (
+        <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-sm text-red-700">
+          <AlertCircle className="w-4 h-4" />
+          {error}
+        </div>
+      )}
+      
       <div className="flex gap-4 items-center">
         <div className="relative">
           {cover ? (
@@ -120,29 +137,40 @@ const MusicCard = ({
               src={cover}
               alt={title}
               className="w-16 h-16 rounded-lg object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                if (target.nextElementSibling) {
+                  (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                }
+              }}
             />
-          ) : (
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
-              <Music2 className="w-8 h-8 text-white" />
-            </div>
-          )}
+          ) : null}
+          <div 
+            className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center"
+            style={{ display: cover ? 'none' : 'flex' }}
+          >
+            <Music2 className="w-8 h-8 text-white" />
+          </div>
           {(previewUrl || youtubeUrl) && (
             <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm">
               <Play className="w-3 h-3 text-purple-600" />
             </div>
           )}
         </div>
+        
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900 truncate">{title}</h3>
-          <p className="text-purple-600 text-sm truncate">{artist}</p>
+          <h3 className="font-semibold text-gray-900 truncate" title={title}>{title}</h3>
+          <p className="text-purple-600 text-sm truncate" title={artist}>{artist}</p>
           {album && type === "song" && (
-            <p className="text-gray-500 text-xs truncate">{album}</p>
+            <p className="text-gray-500 text-xs truncate" title={album}>{album}</p>
           )}
           {createdAt && (
             <p className="text-gray-400 text-xs mt-1">
               Added {formatDate(createdAt)}
             </p>
           )}
+          
           <div className="flex gap-2 mt-2 flex-wrap">
             {spotifyUrl && (
               <a 
@@ -157,8 +185,12 @@ const MusicCard = ({
             {previewUrl && (
               <button 
                 onClick={() => {
-                  const audio = new Audio(previewUrl);
-                  audio.play().catch(e => console.warn('Preview play failed:', e));
+                  try {
+                    const audio = new Audio(previewUrl);
+                    audio.play().catch(e => console.warn('Preview play failed:', e));
+                  } catch (e) {
+                    console.warn('Audio creation failed:', e);
+                  }
                 }}
                 className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full hover:bg-purple-200 transition-colors"
               >
@@ -176,6 +208,7 @@ const MusicCard = ({
             )}
           </div>
         </div>
+        
         <button 
           onClick={handleFavoriteClick}
           disabled={favoriteLoading}
@@ -198,9 +231,10 @@ const MusicCard = ({
 };
 
 export default function FavoritesPage() {
-  const [favoritesTracks, setFavoritesTracks] = useState<FavoriteTrack[]>([]);
-  const [favoritesAlbums, setFavoritesAlbums] = useState<FavoriteAlbum[]>([]);
+  const [favoritesTracks, setFavoritesTracks] = useState<Song[]>([]);
+  const [favoritesAlbums, setFavoritesAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'songs' | 'albums'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'alphabetical'>('newest');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
@@ -208,12 +242,33 @@ export default function FavoritesPage() {
   const loadFavorites = async () => {
     try {
       setLoading(true);
-      const response = await api.get<FavoritesResponse>('/api/ai-song/favorites');
+      setError(null);
       
-      setFavoritesTracks(response.data.tracks || []);
-      setFavoritesAlbums(response.data.albums || []);
-    } catch (error) {
+      console.log('Loading favorites...');
+      const response = await api.get<FavoritesResponse>('api/ai-song/favorites');
+      console.log('Favorites response:', response.data);
+      
+      // Ensure we always have arrays, even if the response doesn't include them
+      const tracks = Array.isArray(response.data.tracks) ? response.data.tracks : [];
+      const albums = Array.isArray(response.data.albums) ? response.data.albums : [];
+      
+      setFavoritesTracks(tracks);
+      setFavoritesAlbums(albums);
+      
+      console.log(`Loaded ${tracks.length} favorite tracks and ${albums.length} favorite albums`);
+    } catch (error: any) {
       console.error('Error loading favorites:', error);
+      
+      let errorMessage = 'Failed to load favorites. Please try again.';
+      if (error.response?.status === 401) {
+        errorMessage = 'Please log in to view your favorites.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'No favorites found.';
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Server error. Please try again later.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -223,60 +278,78 @@ export default function FavoritesPage() {
     loadFavorites();
   }, []);
 
-  const handleFavoriteToggle = async (itemId: string, itemType: string, isFavorited: boolean) => {
+  const handleFavoriteToggle = async (itemId: string, itemType: string, isFavorited: boolean): Promise<void> => {
     try {
-      if (isFavorited) {
-        await api.delete(`/api/ai-song/favorites/${itemId}`);
-        
-        if (itemType === 'song') {
-          setFavoritesTracks(prev => prev.filter(track => track.trackId !== itemId));
-        } else {
-          setFavoritesAlbums(prev => prev.filter(album => album.albumId !== itemId));
-        }
+      console.log(`Removing favorite - ID: ${itemId}, Type: ${itemType}`);
+      
+      await api.delete(`/api/ai-song/favorites/${itemId}`);
+      console.log(`Successfully removed ${itemId} from favorites`);
+      
+      // Remove from local state
+      if (itemType === 'song') {
+        setFavoritesTracks(prev => prev.filter(track => 
+          (track.trackId || track.trackId) !== itemId
+        ));
+      } else if (itemType === 'album') {
+        setFavoritesAlbums(prev => prev.filter(album => album.albumId !== itemId));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error removing favorite:', error);
-      alert('Failed to remove from favorites. Please try again.');
+      
+      let errorMessage = 'Failed to remove from favorites. Please try again.';
+      if (error.response?.status === 401) {
+        errorMessage = 'Please log in to manage favorites.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Item not found in favorites.';
+      }
+      
+      throw new Error(errorMessage);
     }
   };
 
-  const sortItems = <T extends { createdAt: string }>(items: T[], getName: (item: T) => string) => {
+  const sortItems = <T extends { addedAt?: string; trackName?: string; songName?: string; albumName?: string; artistName?: string }>(items: T[]) => {
     return [...items].sort((a, b) => {
       switch (sortBy) {
         case 'newest':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          return new Date(b.addedAt || '').getTime() - new Date(a.addedAt || '').getTime();
         case 'oldest':
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          return new Date(a.addedAt || '').getTime() - new Date(b.addedAt || '').getTime();
         case 'alphabetical':
-          return getName(a).localeCompare(getName(b));
+          const aTitle = (a.trackName || a.songName || a.albumName || '').toLowerCase();
+          const bTitle = (b.trackName || b.songName || b.albumName || '').toLowerCase();
+          return aTitle.localeCompare(bTitle);
         default:
           return 0;
       }
     });
   };
 
-  const getFilteredAndSortedTracks = () => {
-    if (filter === 'albums') return [];
-    const sorted = sortItems(favoritesTracks, (track) => track.song?.songName || '');
-    return sorted;
+  const getFilteredItems = () => {
+    const sortedTracks = sortItems(favoritesTracks);
+    const sortedAlbums = sortItems(favoritesAlbums);
+
+    switch (filter) {
+      case 'songs':
+        return { tracks: sortedTracks, albums: [] };
+      case 'albums':
+        return { tracks: [], albums: sortedAlbums };
+      default:
+        return { tracks: sortedTracks, albums: sortedAlbums };
+    }
   };
 
-  const getFilteredAndSortedAlbums = () => {
-    if (filter === 'songs') return [];
-    const sorted = sortItems(favoritesAlbums, (album) => album.album?.albumName || '');
-    return sorted;
-  };
-
-  const filteredTracks = getFilteredAndSortedTracks();
-  const filteredAlbums = getFilteredAndSortedAlbums();
+  const { tracks: filteredTracks, albums: filteredAlbums } = getFilteredItems();
   const totalItems = filteredTracks.length + filteredAlbums.length;
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50">
         <div className="container mx-auto px-4 py-8 max-w-4xl">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading your favorites...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -289,101 +362,122 @@ export default function FavoritesPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="bg-gradient-to-r from-red-500 to-pink-500 p-3 rounded-full">
-              <Heart className="w-8 h-8 text-white fill-white" />
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-3 rounded-full">
+              <Heart className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-red-500 to-pink-500 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
               My Favorites
             </h1>
           </div>
           <p className="text-gray-600 text-lg">
-            Your personal collection of loved music
+            Your personal collection of amazing music
           </p>
         </div>
 
-        {/* Controls */}
-        <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-8">
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="flex flex-wrap gap-3">
-              {/* Filter buttons */}
-              <div className="flex gap-2">
-                {(['all', 'songs', 'albums'] as const).map((filterOption) => (
-                  <button
-                    key={filterOption}
-                    onClick={() => setFilter(filterOption)}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                      filter === filterOption
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {filterOption.charAt(0).toUpperCase() + filterOption.slice(1)}
-                  </button>
-                ))}
-              </div>
-              
-              {/* Sort dropdown */}
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 font-medium"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="alphabetical">A-Z</option>
-              </select>
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <div className="flex-1">
+              <p className="text-red-800 font-medium">Error loading favorites</p>
+              <p className="text-red-600 text-sm">{error}</p>
             </div>
+            <button
+              onClick={loadFavorites}
+              className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors"
+              title="Retry"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-500">
-                {totalItems} item{totalItems !== 1 ? 's' : ''}
-              </span>
-              
-              {/* View mode toggle */}
-              <div className="flex gap-1">
+        {/* Controls */}
+        {!error && totalItems > 0 && (
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6">
+            <div className="flex flex-wrap gap-4 items-center justify-between">
+              <div className="flex flex-wrap gap-4 items-center">
+                {/* Filter */}
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-gray-500" />
+                  <select
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value as 'all' | 'songs' | 'albums')}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="all">All ({favoritesTracks.length + favoritesAlbums.length})</option>
+                    <option value="songs">Songs ({favoritesTracks.length})</option>
+                    <option value="albums">Albums ({favoritesAlbums.length})</option>
+                  </select>
+                </div>
+
+                {/* Sort */}
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'alphabetical')}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="alphabetical">A-Z</option>
+                </select>
+              </div>
+
+              {/* View Mode */}
+              <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'list'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  className={`p-2 rounded-md transition-colors ${
+                    viewMode === 'list' 
+                      ? 'bg-white text-purple-600 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700'
                   }`}
+                  title="List view"
                 >
                   <List className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'grid'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  className={`p-2 rounded-md transition-colors ${
+                    viewMode === 'grid' 
+                      ? 'bg-white text-purple-600 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700'
                   }`}
+                  title="Grid view"
                 >
                   <Grid className="w-4 h-4" />
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Content */}
-        {totalItems === 0 ? (
+        {!error && totalItems === 0 && (
           <div className="text-center py-12">
             <div className="bg-white rounded-2xl p-12 shadow-lg border border-gray-100">
               <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-600 mb-2">
                 No favorites yet
               </h3>
-              <p className="text-gray-500">
-                Start discovering music and add your favorites by clicking the heart icon
+              <p className="text-gray-500 mb-6">
+                Start adding songs and albums to your favorites to see them here
               </p>
+              <button
+                onClick={() => window.history.back()}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-full font-medium hover:shadow-lg transition-shadow"
+              >
+                Discover Music
+              </button>
             </div>
           </div>
-        ) : (
-          <div className="space-y-8">
-            {/* Songs Section */}
+        )}
+
+        {/* Favorites List */}
+        {!error && totalItems > 0 && (
+          <div className="space-y-6">
+            {/* Songs */}
             {filteredTracks.length > 0 && (
-              <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+              <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
                 <div className="flex items-center gap-2 mb-6">
                   <Play className="w-6 h-6 text-purple-600" />
                   <h2 className="text-2xl font-bold text-gray-900">
@@ -392,33 +486,33 @@ export default function FavoritesPage() {
                 </div>
                 <div className={`grid gap-4 ${
                   viewMode === 'grid' 
-                    ? 'md:grid-cols-1 lg:grid-cols-2' 
+                    ? 'md:grid-cols-2 lg:grid-cols-2' 
                     : 'grid-cols-1'
                 }`}>
-                  {filteredTracks.map((favoriteTrack) => (
+                  {filteredTracks.map((track, i) => (
                     <MusicCard
-                      key={favoriteTrack.trackId}
-                      title={favoriteTrack.song?.songName || "Unknown Song"}
-                      artist={favoriteTrack.song?.artistName || "Unknown Artist"}
-                      album={favoriteTrack.song?.albumName || "Unknown Album"}
-                      cover={favoriteTrack.song?.albumCover}
+                      key={track?.trackId || track?.trackId || i}
+                      title={track?.trackName || track?.songName || "Unknown Song"}
+                      artist={track?.artistName || (track?.artistNames && track.artistNames[0]) || "Unknown Artist"}
+                      album={track?.albumName}
+                      cover={track?.albumCover}
                       type="song"
-                      previewUrl={favoriteTrack.song?.previewUrl}
-                      spotifyUrl={favoriteTrack.song?.spotifyUrl}
-                      youtubeData={favoriteTrack.song?.youtubeData}
-                      itemId={favoriteTrack.trackId}
+                      previewUrl={track?.previewUrl}
+                      spotifyUrl={track?.spotifyUrl}
+                      youtubeData={track?.youtubeData}
+                      itemId={track?.trackId || track?.trackId}
                       onFavoriteToggle={handleFavoriteToggle}
                       isFavorited={true}
-                      createdAt={favoriteTrack.createdAt}
+                      createdAt={track?.addedAt}
                     />
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Albums Section */}
+            {/* Albums */}
             {filteredAlbums.length > 0 && (
-              <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+              <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
                 <div className="flex items-center gap-2 mb-6">
                   <Music2 className="w-6 h-6 text-purple-600" />
                   <h2 className="text-2xl font-bold text-gray-900">
@@ -427,21 +521,21 @@ export default function FavoritesPage() {
                 </div>
                 <div className={`grid gap-4 ${
                   viewMode === 'grid' 
-                    ? 'md:grid-cols-1 lg:grid-cols-2' 
+                    ? 'md:grid-cols-2 lg:grid-cols-2' 
                     : 'grid-cols-1'
                 }`}>
-                  {filteredAlbums.map((favoriteAlbum) => (
+                  {filteredAlbums.map((album, i) => (
                     <MusicCard
-                      key={favoriteAlbum.albumId}
-                      title={favoriteAlbum.album?.albumName || "Unknown Album"}
-                      artist={favoriteAlbum.album?.artistName || "Unknown Artist"}
-                      cover={favoriteAlbum.album?.albumCover}
+                      key={album?.albumId || i}
+                      title={album?.albumName || "Unknown Album"}
+                      artist={album?.artistName || (album?.artistNames && album.artistNames[0]) || "Unknown Artist"}
+                      cover={album?.albumCover}
                       type="album"
-                      spotifyUrl={favoriteAlbum.album?.spotifyUrl}
-                      itemId={favoriteAlbum.albumId}
+                      spotifyUrl={album?.spotifyUrl}
+                      itemId={album?.albumId}
                       onFavoriteToggle={handleFavoriteToggle}
                       isFavorited={true}
-                      createdAt={favoriteAlbum.createdAt}
+                      createdAt={album?.addedAt}
                     />
                   ))}
                 </div>

@@ -32,7 +32,7 @@ api.interceptors.request.use(
 
 api.interceptors.request.use(
   (config: any) => {
-    console.log(`🔄 API Request: ${config.method?.toUpperCase()} ${config.url}`, {
+    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`, {
       params: config.params,
       hasAuth: !!config.headers?.Authorization
     });
@@ -46,11 +46,11 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response: any) => {
-    console.log(`✅ API Response: ${response.status} ${response.config.url}`);
+    console.log(`API Response: ${response.status} ${response.config.url}`);
     return response;
   },
   (error: any) => {
-    console.error('❌ API Error:', {
+    console.error('API Error:', {
       url: error.config?.url,
       method: error.config?.method,
       status: error.response?.status,

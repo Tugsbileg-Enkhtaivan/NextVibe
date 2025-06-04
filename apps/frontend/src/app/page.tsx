@@ -1,8 +1,11 @@
 "use client"
 
-import React, { useState ,useEffect} from "react";
+import React, { useState, useEffect } from "react";
 import { Music2, Heart, Clock, User, Sparkles, Play, Youtube } from 'lucide-react';
 import api from './utils/axios'
+import Header from './components/Header'
+import { useAuth } from '@clerk/nextjs';
+
 interface Song {
   songName?: string;
   artistName?: string;
@@ -105,7 +108,7 @@ const MusicCard = ({
     thumbnail: string;
   } | null;
   itemId?: string;
-  onFavoriteToggle?: (itemId: string, itemType: string, isFavorited: boolean) => void;
+  onFavoriteToggle?: (itemId: string, itemType: string, isFavorited: boolean) => Promise<void>;
   isFavorited?: boolean;
 }) => {
   const [favoriteLoading, setFavoriteLoading] = useState(false);
@@ -142,12 +145,21 @@ const MusicCard = ({
               src={cover}
               alt={title}
               className="w-16 h-16 rounded-lg object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                if (target.nextElementSibling) {
+                  (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                }
+              }}
             />
-          ) : (
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
-              <Music2 className="w-8 h-8 text-white" />
-            </div>
-          )}
+          ) : null}
+          <div 
+            className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center"
+            style={{ display: cover ? 'none' : 'flex' }}
+          >
+            <Music2 className="w-8 h-8 text-white" />
+          </div>
           {(previewUrl || youtubeUrl) && (
             <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm">
               <Play className="w-3 h-3 text-purple-600" />
@@ -155,10 +167,10 @@ const MusicCard = ({
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900 truncate">{title}</h3>
-          <p className="text-purple-600 text-sm truncate">{artist}</p>
+          <h3 className="font-semibold text-gray-900 truncate" title={title}>{title}</h3>
+          <p className="text-purple-600 text-sm truncate" title={artist}>{artist}</p>
           {album && type === "song" && (
-            <p className="text-gray-500 text-xs truncate">{album}</p>
+            <p className="text-gray-500 text-xs truncate" title={album}>{album}</p>
           )}
           <div className="flex gap-2 mt-2 flex-wrap">
             {spotifyUrl && (
@@ -174,8 +186,12 @@ const MusicCard = ({
             {previewUrl && (
               <button 
                 onClick={() => {
-                  const audio = new Audio(previewUrl);
-                  audio.play().catch(e => console.warn('Preview play failed:', e));
+                  try {
+                    const audio = new Audio(previewUrl);
+                    audio.play().catch(e => console.warn('Preview play failed:', e));
+                  } catch (e) {
+                    console.warn('Audio creation failed:', e);
+                  }
                 }}
                 className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full hover:bg-purple-200 transition-colors"
               >
@@ -201,6 +217,7 @@ const MusicCard = ({
               ? 'opacity-50 cursor-not-allowed' 
               : 'hover:bg-gray-100'
           }`}
+          title={isFavorited ? "Remove from favorites" : "Add to favorites"}
         >
           {favoriteLoading ? (
             <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
@@ -228,6 +245,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [fromCache, setFromCache] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [favoritesLoaded, setFavoritesLoaded] = useState(false);
 
   const moods = ["Happy", "Sad", "Calm", "Angry", "Energetic", "Melancholic", "Excited", "Peaceful"];
   const genres = ["Lo-fi", "Rock", "Jazz", "Ambient", "Hip Hop", "EDM", "R&B", "Pop"];
@@ -235,26 +253,49 @@ export default function HomePage() {
 
   const loadUserFavorites = async () => {
     try {
+      console.log('Loading user favorites...');
+      
       const response = await api.get<FavoritesResponse>('/api/ai-song/favorites');
       const userFavorites = new Set<string>();
       
       response.data.tracks?.forEach((track) => {
-        userFavorites.add(track.trackId);
+        if (track.trackId) {
+          userFavorites.add(track.trackId);
+        }
       });
       
       response.data.albums?.forEach((album) => {
-        userFavorites.add(album.albumId);
+        if (album.albumId) {
+          userFavorites.add(album.albumId);
+        }
       });
       
+      console.log('Loaded favorites:', Array.from(userFavorites));
       setFavorites(userFavorites);
-    } catch (error) {
+      setFavoritesLoaded(true);
+    } catch (error: any) {
       console.error('Error loading favorites:', error);
+      
+      if (error.response?.status === 401) {
+        console.log('User not authenticated - skipping favorites load');
+      }
+      
+      setFavorites(new Set());
+      setFavoritesLoaded(true);
     }
   };
-  
+
+  const { isLoaded, userId } = useAuth();
   useEffect(() => {
-    loadUserFavorites();
-  }, []);
+    if (isLoaded) {
+      if (userId) {
+        loadUserFavorites();
+      } else {
+        setFavorites(new Set());
+        setFavoritesLoaded(true);
+      }
+    }
+  }, [isLoaded, userId]);
 
   const handleSubmit = async () => {
     if (!mood || !genre || !activity) {
@@ -291,11 +332,15 @@ export default function HomePage() {
     }
   };
 
-  const handleFavoriteToggle = async (itemId: string, itemType: string, isFavorited: boolean) => {
+  const handleFavoriteToggle = async (itemId: string, itemType: string, isFavorited: boolean): Promise<void> => {
     try {
+      console.log(`Toggling favorite - ID: ${itemId}, Type: ${itemType}, Currently Favorited: ${isFavorited}`);
+      
       if (isFavorited) {
         // Remove from favorites
         await api.delete(`/api/ai-song/favorites/${itemId}`);
+        console.log(`Successfully removed ${itemId} from favorites`);
+        
         setFavorites(prev => {
           const newFavorites = new Set(prev);
           newFavorites.delete(itemId);
@@ -307,11 +352,22 @@ export default function HomePage() {
           itemId,
           itemType
         });
+        console.log(`Successfully added ${itemId} to favorites`);
+        
         setFavorites(prev => new Set([...prev, itemId]));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling favorite:', error);
-      alert('Failed to update favorites. Please try again.');
+      
+      let errorMessage = 'Failed to update favorites. Please try again.';
+      if (error.response?.status === 401) {
+        errorMessage = 'Please log in to manage favorites.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Item not found.';
+      }
+      
+      alert(errorMessage);
+      throw error; // Re-throw to let the component handle loading states
     }
   };
 
@@ -319,8 +375,8 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50">
+      <Header />
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-3 rounded-full">
@@ -408,7 +464,7 @@ export default function HomePage() {
                         key={song?.songId || i}
                         title={song?.songName || "Unknown Song"}
                         artist={song?.artistName || "Unknown Artist"}
-                        album={song?.albumName || "Unknown Album"}
+                        album={song?.albumName}
                         cover={song?.albumCover}
                         type="song"
                         previewUrl={song?.previewUrl}

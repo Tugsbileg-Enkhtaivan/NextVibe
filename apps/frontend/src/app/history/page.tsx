@@ -1,34 +1,40 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Music2, Heart, Clock, User, Sparkles, Play, Calendar, Filter, Search, Trash2, Star, AlertCircle } from 'lucide-react';
-import api from "../utils/axios"
-import { useQuery } from '@tanstack/react-query';
+import { Music2, Heart, Clock, User, Play, Search, Trash2, AlertCircle, History, ChevronDown } from 'lucide-react';
+import api from "../utils/axios";
+
+type EmotionData = {
+  image: string;
+  color: string;
+};
 
 enum MoodType {
   HAPPY = 'HAPPY',
-  SAD = 'SAD',
-  CALM = 'CALM',
-  ENERGETIC = 'ENERGETIC',
-  ANGRY = 'ANGRY',
-  RELAXED = 'RELAXED',
-  ROMANTIC = 'ROMANTIC',
-  NOSTALGIC = 'NOSTALGIC',
-  MELANCHOLIC = 'MELANCHOLIC',
-  UPBEAT = 'UPBEAT'
+  JOY = "JOY",
+  ANGER = "ANGER",
+  ENVY = "ENVY",
+  FEAR = "FEAR",
+  SADNESS = "SADNESS",
+  ENNUI = "ENNUI",
+  DISGUST = "DISGUST",
+  SHAME = "SHAME",
+  ANXIETY = "ANXIETY"
 }
 
 enum ActivityType {
-  WORKOUT = 'WORKOUT',
-  STUDY = 'STUDY',
-  RELAX = 'RELAX',
-  PARTY = 'PARTY',
-  COMMUTE = 'COMMUTE',
-  WORK = 'WORK',
-  SLEEP = 'SLEEP',
-  COOKING = 'COOKING',
-  CLEANING = 'CLEANING',
-  TRAVEL = 'TRAVEL'
+  CODING = "CODING",
+  READING = "READING",
+  NOTHING = "NOTHING",
+  RUNNING = "RUNNING",
+  COOKING = "COOKING",
+  TRAVELING = "TRAVELING",
+  GAMING = "GAMING",
+  DRAWING = "DRAWING",
+  YOGA = "YOGA",
+  BIKING = "BIKING",
+  DANCING = "DANCING",
+  GARDENING = "GARDENING"
 }
 
 interface HistoryTrack {
@@ -62,6 +68,8 @@ interface RecommendationHistory {
   albums: HistoryAlbum[];
   parameters?: any;
 }
+
+/// MUSIC CARD
 
 const MusicCard = ({
   title,
@@ -124,10 +132,12 @@ const MusicCard = ({
   </div>
 );
 
-const HistoryCard = ({ 
-  recommendation, 
-  onDelete 
-}: { 
+// HISTORY CARD
+
+const HistoryCard = ({
+  recommendation,
+  onDelete
+}: {
   recommendation: RecommendationHistory;
   onDelete: (id: string) => void;
 }) => {
@@ -145,70 +155,102 @@ const HistoryCard = ({
     });
   };
 
+  /// MOOD COLOR
+
   const getMoodColor = (mood?: string) => {
     const colors: Record<string, string> = {
-      HAPPY: 'bg-yellow-100 text-yellow-800',
-      SAD: 'bg-blue-100 text-blue-800',
-      CALM: 'bg-green-100 text-green-800',
-      ENERGETIC: 'bg-red-100 text-red-800',
-      ANGRY: 'bg-red-100 text-red-800',
-      RELAXED: 'bg-purple-100 text-purple-800',
-      ROMANTIC: 'bg-pink-100 text-pink-800',
-      NOSTALGIC: 'bg-amber-100 text-amber-800',
-      MELANCHOLIC: 'bg-indigo-100 text-indigo-800',
-      UPBEAT: 'bg-orange-100 text-orange-800'
+      HAPPY: 'linear-gradient(135deg, #FFEB3B 0%, #FFC107 50%, #FF8F00 100%)',
+      JOY: 'linear-gradient(135deg, #FFEB3B 0%, #FFC107 50%, #FF8F00 100%)',
+      ANGER: "linear-gradient(135deg, #F44336 0%, #D32F2F 50%, #B71C1C 100%)",
+      ENVY: "linear-gradient(135deg, #00E5CC 0%, #00BFA5 50%, #004D40 100%)",
+      FEAR: "linear-gradient(135deg, #9C27B0 0%, #7B1FA2 50%, #4A148C 100%)",
+      SADNESS: "linear-gradient(135deg, #2196F3 0%, #1976D2 50%, #0D47A1 100%)",
+      ENNUI: "linear-gradient(135deg, #5C6BC0 0%, #3F51B5 50%, #1A237E 100%)",
+      DISGUST: "linear-gradient(135deg, #8BC34A 0%, #689F38 50%, #33691E 100%)",
+      SHAME: "linear-gradient(135deg, #FF69B4 0%, #E91E63 50%, #880E4F 100%)",
+      ANXIETY: "linear-gradient(135deg, #FF8C42 0%, #FF6B1A 50%, #E55100 100%)",
     };
     return colors[mood || ''] || 'bg-gray-100 text-gray-800';
   };
 
+  const getGenreImage = (genre?: string) => {
+    const images: Record<string, string> = {
+      POP: "/assets/pop-sticker-icon.webp",
+      ROCK: "/assets/finger-icon.webp",
+      HIPHOP: "/assets/orange-hat-icon.webp",
+      ELECTRONIC: "/assets/headset-icon.webp",
+      SOUL: "/assets/heart-icon.webp",
+      COUNTRY: "/assets/guitar-icon.webp",
+      JAZZ: "/assets/buree-icon.webp",
+      CLASSICAL: "/assets/vionyl-icon.webp",
+      REGGAE: "/assets/reggie-icon.webp",
+      BLUES: "/assets/blues-icon.webp",
+    };
+    return images[genre?.toUpperCase() || ''] || 'bg-gray-100 text-gray-800';
+  };
+
+  /// ACTIVITY COLOR
+
   const getActivityColor = (activity?: string) => {
     const colors: Record<string, string> = {
-      WORKOUT: 'bg-orange-100 text-orange-800',
-      STUDY: 'bg-indigo-100 text-indigo-800',
-      RELAX: 'bg-green-100 text-green-800',
-      PARTY: 'bg-pink-100 text-pink-800',
-      COMMUTE: 'bg-blue-100 text-blue-800',
-      WORK: 'bg-gray-100 text-gray-800',
-      SLEEP: 'bg-purple-100 text-purple-800',
-      COOKING: 'bg-yellow-100 text-yellow-800',
-      CLEANING: 'bg-teal-100 text-teal-800',
-      TRAVEL: 'bg-cyan-100 text-cyan-800'
+      CODING: "/assets/activity-icon-coding.webp",
+      READING: "/assets/activity-icon-reading.webp",
+      NOTHING: "/assets/chill-out-icon.webp",
+      RUNNING: "/assets/running-icon.webp",
+      COOKING: "/assets/cooking-icon.webp",
+      TRAVELING: "/assets/travel-icon.webp",
+      GAMING: "/assets/gaming-icon.webp",
+      DRAWING: "/assets/drawing-icon.webp",
+      YOGA: "/assets/yoga-icon.webp",
+      BIKING: "/assets/biking-icon.webp",
+      DANCING: "/assets/dancing-icon.webp",
+      GARDENING: "/assets/gardening-icon.webp",
+
     };
-    return colors[activity || ''] || 'bg-gray-100 text-gray-800';
+    return colors[activity || ''] || '/assets/hamster.webp';
   };
+
+  /// HANDLE PLAY
 
   const handlePlay = (previewUrl: string) => {
     if (currentAudio) {
       currentAudio.pause();
       currentAudio.currentTime = 0;
     }
-    
+
     const audio = new Audio(previewUrl);
     setCurrentAudio(audio);
     audio.play().catch(console.error);
   };
+
+  /// HANDLE FAVORITE ???? CONSOLE LOG L BAIHIIN
 
   const handleFavorite = (itemId: string, itemType: 'song' | 'album') => {
     // Implement favorite functionality
     console.log(`Adding ${itemType} ${itemId} to favorites`);
   };
 
+  // console.log(getGenreImage(recommendation.genres[0]), "genres")
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className={`rounded-xl shadow-sm border-6 border-gray-100 relative`} style={{ background: `${getMoodColor(recommendation.mood)}` }}> {/* END OORCHLOLT HIISEN CARDNII BACKGROUND */}
+      <img src={getGenreImage(recommendation.genres[0])} className='w-14 absolute top-[-20px] right-[-15px] rotate-20' />
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-full p-2">
-              <Sparkles className="w-5 h-5 text-white" />
+            <div className="bg-gradient-to-br from-purple-500 border border-white to-pink-500 w-12 rounded-full p-2">
+              {recommendation.activity && (
+                <img src={getActivityColor(recommendation.activity)} />
+              )}
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">Music Recommendations</h3>
-              <p className="text-sm text-gray-500">{formatDate(recommendation.createdAt)}</p>
+              <h3 className="font-semibold text-white">Music Recommendations</h3>
+              <p className="text-sm text-white">{formatDate(recommendation.createdAt)}</p>
             </div>
           </div>
           <button
             onClick={() => onDelete(recommendation.id)}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-red-500"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-white hover:text-red-500"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -216,13 +258,13 @@ const HistoryCard = ({
 
         <div className="flex flex-wrap gap-2 mb-4">
           {recommendation.mood && (
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getMoodColor(recommendation.mood)}`}>
-              {recommendation.mood.toLowerCase()}
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-white">
+              {recommendation.mood[0].toUpperCase() + recommendation.mood.slice(1).toLowerCase()}
             </span>
           )}
           {recommendation.activity && (
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getActivityColor(recommendation.activity)}`}>
-              {recommendation.activity.toLowerCase()}
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-white">
+              {recommendation.activity[0].toUpperCase() + recommendation.activity.slice(1).toLowerCase()}
             </span>
           )}
           {recommendation.genres.map((genre, index) => (
@@ -233,7 +275,7 @@ const HistoryCard = ({
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 text-sm text-gray-600">
+          <div className="flex items-center gap-4 text-sm text-white">
             <span className="flex items-center gap-1">
               <Music2 className="w-4 h-4" />
               {recommendation.tracks.length} songs
@@ -247,7 +289,7 @@ const HistoryCard = ({
           </div>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-purple-600 hover:text-purple-700 text-sm font-medium"
+            className="text-white hover:text-black hover:bg-white rounded-2xl py-1 px-2 text-sm font-medium"
           >
             {isExpanded ? 'Show Less' : 'Show More'}
           </button>
@@ -325,6 +367,8 @@ const AuthError = ({ onRetry }: { onRetry: () => void }) => (
   </div>
 );
 
+/// HISTORY PAGE
+
 export default function HistoryPage() {
   const [history, setHistory] = useState<RecommendationHistory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -339,15 +383,15 @@ export default function HistoryPage() {
       setLoading(true);
       setError(null);
       setAuthError(false);
-      
+
       // Add a small delay to ensure Clerk auth is ready
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       const response = await api.get<RecommendationHistory[]>("/api/ai-song/history");
       setHistory(response.data);
     } catch (error: any) {
       console.error('Failed to fetch history:', error);
-      
+
       if (error.response?.status === 401) {
         setAuthError(true);
         setError('Authentication required. Please sign in to view your history.');
@@ -367,7 +411,7 @@ export default function HistoryPage() {
     try {
       await api.delete(`/api/ai-song/history/${id}`);
       setHistory(prev => prev.filter(item => item.id !== id));
-    } catch(error: any) {
+    } catch (error: any) {
       console.error('Failed to delete history item:', error);
       if (error.response?.status === 401) {
         setAuthError(true);
@@ -377,6 +421,8 @@ export default function HistoryPage() {
       }
     }
   };
+
+  /// CLEAR HISTORY
 
   const clearAllHistory = async () => {
     if (window.confirm('Are you sure you want to clear all history?')) {
@@ -395,13 +441,15 @@ export default function HistoryPage() {
     }
   };
 
+  /// FILTERED HISTORY
+
   const filteredHistory = history.filter(item => {
-    const matchesSearch = searchQuery === '' || 
-      item.tracks.some(track => 
+    const matchesSearch = searchQuery === '' ||
+      item.tracks.some(track =>
         track.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         track.artistNames.some(artist => artist.toLowerCase().includes(searchQuery.toLowerCase()))
       ) ||
-      item.albums.some(album => 
+      item.albums.some(album =>
         album.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         album.artistNames.some(artist => artist.toLowerCase().includes(searchQuery.toLowerCase()))
       );
@@ -416,21 +464,22 @@ export default function HistoryPage() {
   const moodOptions = Object.values(MoodType);
   const activityOptions = Object.values(ActivityType);
 
-  // Helper function to format enum values for display
+  // Helper function to format enum values for display ----- RECOMMENDATION HISTORY
   const formatEnumValue = (value: string) => {
     return value.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen">
+    <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen" style={{
+      background: "linear-gradient(135deg, #00F260 0%, #0575E6 100%)"
+    }
+    }>
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-full p-3">
-            <Clock className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Recommendation History</h1>
-            <p className="text-gray-600">Your past music discoveries</p>
+        <div className="flex items-center gap-3 mb-6">
+          <img src="/assets/history-icon.webp" className='w-10' />
+          <div className='border-l border-white pl-4'>
+            <h1 className="text-3xl font-bold text-white">Recommendation History</h1>
+            <p className="text-white">Your past music discoveries</p>
           </div>
         </div>
 
@@ -456,7 +505,7 @@ export default function HistoryPage() {
         {!authError && !loading && (
           <>
             {/* Search and Filters */}
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 mb-6">
+            <div className="bg-sky-700 rounded-xl p-4 shadow-sm border-6 border-white mb-6">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -465,72 +514,76 @@ export default function HistoryPage() {
                     placeholder="Search songs, artists, albums..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2 bg-white border border-white rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-white"
                   />
                 </div>
-                <select
-                  value={selectedMood}
-                  onChange={(e) => setSelectedMood(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="all">All Moods</option>
-                  {moodOptions.map(mood => (
-                    <option key={mood} value={mood}>
-                      {formatEnumValue(mood)}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={selectedActivity}
-                  onChange={(e) => setSelectedActivity(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="all">All Activities</option>
-                  {activityOptions.map(activity => (
-                    <option key={activity} value={activity}>
-                      {formatEnumValue(activity)}
-                    </option>
-                  ))}
-                </select>
+
+                <div className='flex gap-[30px] sm:gap-4'>
+                  <div className='relative'>
+                    <select
+                      value={selectedMood}
+                      onChange={(e) => setSelectedMood(e.target.value)}
+                      className="appearance-none px-4 py-2 bg-white border border-white rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-white pr-7"
+                    >
+                      <option value="all">All Moods</option>
+                      {moodOptions.map(mood => (
+                        <option key={mood} value={mood}>
+                          {formatEnumValue(mood)}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={18} className='absolute top-1/2 left-[95px] -translate-y-1/2 pointer-events-none' />
+                  </div>
+
+                  <div className='relative'>
+                    <select
+                      value={selectedActivity}
+                      onChange={(e) => setSelectedActivity(e.target.value)}
+                      className="appearance-none px-4 py-2 border bg-white border-white rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-white pr-7"
+                    >
+                      <option value="all">All Activities</option>
+                      {activityOptions.map(activity => (
+                        <option key={activity} value={activity}>
+                          {formatEnumValue(activity)}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={18} className='absolute top-1/2 right-2 -translate-y-1/2 pointer-events-none' />
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+              <div className="bg-slate-600 rounded-xl p-4 shadow-sm border-6 border-white text-white flex items-center" >
                 <div className="flex items-center gap-3">
-                  <div className="bg-purple-100 rounded-full p-2">
-                    <Music2 className="w-5 h-5 text-purple-600" />
-                  </div>
+                  <img src="/assets/music.png" className='w-12 border-2 border-white rounded-full' />
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">{history.length}</p>
-                    <p className="text-sm text-gray-600">Total Sessions</p>
+                    <p className="text-2xl font-bold">{history.length}</p>
+                    <p className="text-sm">Total Sessions</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+              <div className="bg-slate-600 rounded-xl p-4 shadow-sm border-6 border-white text-white flex items-center" >
                 <div className="flex items-center gap-3">
-                  <div className="bg-green-100 rounded-full p-2">
-                    <Play className="w-5 h-5 text-green-600" />
-                  </div>
+                  <img src="/assets/song.webp" className="w-12 border-2 border-white rounded-full" />
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-2xl font-bold">
                       {history.reduce((acc, item) => acc + item.tracks.length, 0)}
                     </p>
-                    <p className="text-sm text-gray-600">Songs Discovered</p>
+                    <p className="text-sm">Songs Discovered</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+              <div className="bg-slate-600 rounded-xl p-4 shadow-sm border-6 border-white text-white flex items-center" >
                 <div className="flex items-center gap-3">
-                  <div className="bg-blue-100 rounded-full p-2">
-                    <User className="w-5 h-5 text-blue-600" />
-                  </div>
+                  <img src="/assets/music-album.png" className="w-12 border-2 border-white rounded-full" />
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-2xl font-bold">
                       {history.reduce((acc, item) => acc + item.albums.length, 0)}
                     </p>
-                    <p className="text-sm text-gray-600">Albums Explored</p>
+                    <p className="text-sm ">Albums Explored</p>
                   </div>
                 </div>
               </div>
@@ -541,7 +594,7 @@ export default function HistoryPage() {
               <div className="flex justify-end mb-4">
                 <button
                   onClick={clearAllHistory}
-                  className="flex items-center gap-2 px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 text-white font-semibold hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                   Clear All History
@@ -563,8 +616,8 @@ export default function HistoryPage() {
             <Clock className="w-12 h-12 text-gray-400 mx-auto" />
           </div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            {searchQuery || selectedMood !== 'all' || selectedActivity !== 'all' 
-              ? 'No matching recommendations found' 
+            {searchQuery || selectedMood !== 'all' || selectedActivity !== 'all'
+              ? 'No matching recommendations found'
               : 'No recommendations yet'
             }
           </h3>

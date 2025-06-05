@@ -346,15 +346,38 @@ export const saveUserRecommendationHistory = async (
   }
 };
 
-export const getUserRecommendationHistory = async (
-  userId: string,
-) => {
+export const getUserRecommendationHistory = async (userId: string) => {
   try {
-    await ensureUserExistsInService(userId);
+    console.log('🔍 Getting recommendation history for user:', userId);
     
+    // First, check if user exists
+    const userExists = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+    
+    console.log('👤 User exists:', !!userExists);
+    
+    // Check total recommendations count in database
+    const totalRecommendations = await prisma.recommendation.count({
+      where: { userId }
+    });
+    
+    console.log('📊 Total recommendations in DB for user:', totalRecommendations);
+    
+    // If no recommendations, return early with detailed info
+    if (totalRecommendations === 0) {
+      console.log('⚠️ No recommendations found for user:', userId);
+      
+      // Check if there are ANY recommendations in the database at all
+      const anyRecommendations = await prisma.recommendation.count();
+      console.log('📈 Total recommendations in entire database:', anyRecommendations);
+      
+      return [];
+    }
+    
+    // Get recommendations with full details
     const recommendations = await prisma.recommendation.findMany({
       where: { userId },
-      orderBy: { createdAt: 'desc' },
       include: {
         tracks: {
           orderBy: { position: 'asc' }
@@ -362,14 +385,32 @@ export const getUserRecommendationHistory = async (
         albums: {
           orderBy: { position: 'asc' }
         }
-      }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50 // Limit to last 50 recommendations
     });
-    
-    console.log(`Retrieved ${recommendations.length} recommendations for user ${userId}`);
+
+    console.log('✅ Retrieved recommendations:', {
+      count: recommendations.length,
+      firstRecommendation: recommendations[0] ? {
+        id: recommendations[0].id,
+        type: recommendations[0].type,
+        createdAt: recommendations[0].createdAt,
+        tracksCount: recommendations[0].tracks?.length || 0,
+        albumsCount: recommendations[0].albums?.length || 0
+      } : null
+    });
+
     return recommendations;
-  } catch (error) {
-    console.error('❌ Error retrieving recommendation history:', error);
-    throw new Error(`Failed to retrieve recommendation history: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } catch (error: any) {
+    console.error('❌ Error getting recommendation history:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      stack: error.stack
+    });
+    throw new Error(`Failed to get recommendation history: ${error.message}`);
   }
 };
 
@@ -988,3 +1029,104 @@ export const getUserWithProfile = async (userId: string) => {
     throw error;
   }
 };
+
+// Add this function to your userService.ts for debugging
+export const debugDatabaseState = async (userId: string) => {
+  try {
+    console.log('🔍 === DATABASE DEBUG CHECK ===');
+    console.log('Target User ID:', userId);
+    
+    // 1. Check database connection
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      console.log('✅ Database connection: OK');
+    } catch (error) {
+      console.log('❌ Database connection: FAILED', error);
+      return;
+    }
+    
+    // 2. Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+    console.log('👤 User exists:', !!user);
+    if (user) {
+      console.log('👤 User details:', {
+        id: user.id,
+        email: user.email,
+        createdAt: user.createdAt
+      });
+    }
+    
+    // 3. Check total users in database
+    const totalUsers = await prisma.user.count();
+    console.log('👥 Total users in database:', totalUsers);
+    
+    // 4. Check recommendations for this user
+    const userRecommendations = await prisma.recommendation.count({
+      where: { userId }
+    });
+    console.log('📊 Recommendations for this user:', userRecommendations);
+    
+    // 5. Check total recommendations in database
+    const totalRecommendations = await prisma.recommendation.count();
+    console.log('📈 Total recommendations in database:', totalRecommendations);
+    
+    // 6. Get sample of recent recommendations
+    const recentRecommendations = await prisma.recommendation.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        createdAt: true,
+        _count: {
+          select: {
+            tracks: true,
+            albums: true
+          }
+        }
+      }
+    });
+    
+    console.log('🕒 Recent recommendations (any user):', recentRecommendations.map(r => ({
+      id: r.id,
+      userId: r.userId,
+      type: r.type,
+      createdAt: r.createdAt,
+      tracksCount: r._count.tracks,
+      albumsCount: r._count.albums
+    })));
+    
+    // 7. Check if there are any recommendations for this specific user
+    if (userRecommendations > 0) {
+      const userRecs = await prisma.recommendation.findMany({
+        where: { userId },
+        take: 2,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          tracks: true,
+          albums: true
+        }
+      });
+      
+      console.log('🎵 User specific recommendations:', userRecs.map(r => ({
+        id: r.id,
+        type: r.type,
+        createdAt: r.createdAt,
+        tracksCount: r.tracks.length,
+        albumsCount: r.albums.length
+      })));
+    }
+    
+    console.log('🔍 === END DEBUG CHECK ===');
+    
+  } catch (error) {
+    console.error('❌ Debug check failed:', error);
+  }
+};
+
+// Call this function in your getRecommendationHistory controller for debugging
+// Add this line right after getting the userId:
+// await debugDatabaseState(userId);

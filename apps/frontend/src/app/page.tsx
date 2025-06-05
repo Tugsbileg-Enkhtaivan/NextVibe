@@ -13,6 +13,7 @@ import {
 import api, { createAuthenticatedApi } from "./utils/axios";
 import Header from "./components/Header";
 import { useAuth } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
 
 interface Song {
   songName?: string;
@@ -141,109 +142,87 @@ const MusicCard = ({
   return (
     <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
       <div className="flex gap-4 items-center">
-        <div className="relative">
-          {cover ? (
-            <img
-              src={cover}
-              alt={title}
-              className="w-16 h-16 rounded-lg object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = "none";
-                if (target.nextElementSibling) {
-                  (target.nextElementSibling as HTMLElement).style.display =
-                    "flex";
-                }
-              }}
-            />
-          ) : null}
-          <div
-            className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center"
-            style={{ display: cover ? "none" : "flex" }}
-          >
-            <Music2 className="w-8 h-8 text-white" />
-          </div>
-          {(previewUrl || youtubeUrl) && (
-            <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm">
-              <Play className="w-3 h-3 text-purple-600" />
-            </div>
-          )}
-        </div>
+                <div className="relative">
+                    {cover ? (
+                        <img
+                            src={cover}
+                            alt={title}
+                            className="w-16 h-16 rounded-lg object-cover"
+                        />
+                    ) : (
+                        <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
+                            <Music2 className="w-8 h-8 text-white" />
+                        </div>
+                    )}
+                    {(previewUrl || youtubeUrl) && (
+                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm">
+                            <Play className="w-3 h-3 text-purple-600" />
+                        </div>
+                    )}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 truncate">{title}</h3>
+                    <p className="text-purple-600 text-sm truncate">{artist}</p>
+                    {album && type === "track" && (
+                        <p className="text-gray-500 text-xs truncate">{album}</p>
+                    )}
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                        {previewUrl && (
+                            <button
+                                onClick={() => {
+                                    const audio = new Audio(previewUrl);
+                                    audio.play().catch(e => console.warn('Preview play failed:', e));
+                                }}
+                                className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full hover:bg-purple-200 transition-colors"
+                            >
+                                Preview
+                            </button>
+                        )}
 
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900 truncate" title={title}>
-            {title}
-          </h3>
-          <p className="text-purple-600 text-sm truncate" title={artist}>
-            {artist}
-          </p>
-          {album && type === "track" && (
-            <p className="text-gray-500 text-xs truncate" title={album}>
-              {album}
-            </p>
-          )}
-          <div className="flex gap-2 mt-2 flex-wrap">
-            {spotifyUrl && (
-              <a
-                href={spotifyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full hover:bg-green-200 transition-colors"
-              >
-                Spotify
-              </a>
-            )}
-            {previewUrl && (
-              <button
-                onClick={() => {
-                  try {
-                    const audio = new Audio(previewUrl);
-                    audio
-                      .play()
-                      .catch((e) => console.warn("Preview play failed:", e));
-                  } catch (e) {
-                    console.warn("Audio creation failed:", e);
-                  }
-                }}
-                className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full hover:bg-purple-200 transition-colors"
-              >
-                Preview
-              </button>
-            )}
-            {type === "track" && youtubeUrl && (
-              <button
-                onClick={handleYouTubePlay}
-                className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full hover:bg-red-200 transition-colors flex items-center gap-1"
-              >
-                <Youtube className="w-3 h-3" />
-                YouTube
-              </button>
-            )}
-          </div>
-        </div>
-        <button
-          onClick={handleFavoriteClick}
-          disabled={favoriteLoading}
-          className={`p-2 rounded-full transition-all duration-200 ${
-            favoriteLoading
-              ? "opacity-50 cursor-not-allowed"
-              : "hover:bg-gray-100"
-          }`}
-          title={isFavorited ? "Remove from favorites" : "Add to favorites"}
-        >
-          {favoriteLoading ? (
-            <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <Heart
-              className={`w-5 h-5 transition-colors ${
-                isFavorited
-                  ? "text-red-500 fill-red-500"
-                  : "text-gray-400 hover:text-red-500"
-              }`}
-            />
-          )}
-        </button>
-      </div>
+                    </div>
+                </div>
+                <div className="flex flex-col items-center justify-center sm:gap-2 sm:flex-row sm:justify-center">
+                    <button
+                        onClick={handleFavoriteClick}
+                        disabled={favoriteLoading}
+                        className={`p-2 rounded-full transition-all duration-200 ${favoriteLoading
+                            ? 'opacity-50 cursor-not-allowed'
+                            : 'hover:bg-gray-100'
+                            }`}
+                    >
+
+                        {favoriteLoading ? (
+                            <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                            <Heart
+                                className={`w-5 h-5 transition-colors ${isFavorited
+                                    ? 'text-red-500 fill-red-500'
+                                    : 'text-gray-400 hover:text-red-500'
+                                    }`}
+                            />
+                        )}
+                    </button>
+                    {/* <div className="flex gap-2"> */}
+                    {type === "track" && youtubeUrl && (
+                        <button
+                            onClick={handleYouTubePlay}
+                            className="cursor-pointer mb-3"
+                        >
+                            <img src="/assets/youtube.webp" className="w-9 sm:pt-3" />
+                        </button>
+                    )}
+                    {spotifyUrl && (
+                        <a
+                            href={spotifyUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <img src="/assets/spotify.webp" className="w-6" />
+                        </a>
+                    )}
+                    {/* </div> */}
+                </div>
+            </div>
     </div>
   );
 };
@@ -316,18 +295,16 @@ export default function HomePage() {
 
       if (!sessionToken) {
         console.warn("No session token available");
-        // Don't fallback - this indicates an auth issue
         throw new Error("No session token available");
       }
 
       return createAuthenticatedApi(sessionToken);
     } catch (error: any) {
       console.error("Error getting session token:", error);
-      throw error; // Don't fallback, let the caller handle the error
+      throw error; 
     }
   };
 
-  // Improved favorites loading with better error handling
   const loadFavoritesForCurrentItems = async () => {
     if (!isLoaded) {
       console.log("Clerk not loaded, skipping favorites");
@@ -373,7 +350,6 @@ export default function HomePage() {
           "Authentication failed - clearing favorites and continuing"
         );
         setFavorites(new Set());
-        // Optionally redirect to sign-in or show a toast notification
       } else if (error.message === "No session token available") {
         console.warn(
           "No session token - user may need to refresh or sign in again"
@@ -381,11 +357,9 @@ export default function HomePage() {
         setFavorites(new Set());
       } else {
         console.error("Unexpected error loading favorites:", error.message);
-        // Don't clear favorites for other errors (network issues, etc.)
       }
     }
   };
-  // Load favorites when songs/albums change or auth state changes
   useEffect(() => {
     if (isLoaded && (songs.length > 0 || albums.length > 0)) {
       loadFavoritesForCurrentItems();
@@ -401,7 +375,6 @@ export default function HomePage() {
     try {
       setLoading(true);
 
-      // Use basic API for recommendations (no auth required)
       const res = await api.get<RecommendationsResponse>(
         "/api/ai-song/recommendations",
         {
@@ -511,15 +484,16 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 relative">
+      <div className="absolute">
       <Header />
-
+      </div>
       <main className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Sparkles className="w-8 h-8 text-purple-600" />
             <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              AI Music Discovery
+              NextVibe
             </h1>
           </div>
           <p className="text-gray-600 text-lg">
@@ -554,32 +528,22 @@ export default function HomePage() {
           />
 
           <div className="flex gap-4 justify-center">
-            <button
-              onClick={handleSubmit}
-              disabled={loading || !mood || !genre || !activity}
-              className={`px-8 py-3 rounded-xl font-semibold text-white transition-all duration-200 ${
-                loading || !mood || !genre || !activity
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 shadow-lg"
-              }`}
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Getting Recommendations...
-                </div>
-              ) : (
-                "Get Recommendations"
-              )}
-            </button>
+          <Button
+  onClick={handleSubmit}
+  disabled={loading || !mood || !genre || !activity}
+  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 shadow-md h-15 text-[17px] rounded-4xl"
+>
+  {loading ? "Getting Recommendations..." : "Get Recommendations"}
+</Button>
+
 
             {(songs.length > 0 || albums.length > 0) && (
-              <button
+              <Button
                 onClick={resetForm}
-                className="px-8 py-3 rounded-xl font-semibold text-gray-600 border-2 border-gray-300 hover:border-gray-400 hover:text-gray-700 transition-all duration-200"
-              >
+                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 shadow-md h-15 text-[17px] rounded-4xl"
+                >
                 Reset
-              </button>
+              </Button>
             )}
           </div>
         </div>

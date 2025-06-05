@@ -49,11 +49,11 @@ export default function Header() {
                     </SignInButton>
 
                     {/* Sign Up Icon Button */}
-                    <SignUpButton mode="modal">
+                    {/* <SignUpButton mode="modal">
                         <button className="p-2 rounded-full hover:bg-gray-200 transition bg-white cursor-pointer">
                             <UserPlus size={20} color="black" />
                         </button>
-                    </SignUpButton>
+                    </SignUpButton> */}
                 </SignedOut>
 
                 <SignedIn>

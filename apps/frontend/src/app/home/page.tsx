@@ -10,10 +10,12 @@ import "swiper/css/pagination";
 import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
 import { Music2, Heart, Play } from "lucide-react";
-import api from "../utils/axios";
+import api, { createAuthenticatedApi } from "../utils/axios";
 import Header from "../components/Header";
 import FlipSwiperGenre from "../components/FlipSwiperGenre";
 import FlipSwiperActivity from "../components/FlipSwiperActivity";
+import { useAuth } from "@clerk/nextjs";
+
 
 type EmotionData = {
     image: string;
@@ -51,14 +53,6 @@ interface RecommendationsResponse {
     fromCache?: boolean;
 }
 
-interface FavoritesResponse {
-    tracks?: Array<{
-        trackId: string;
-    }>;
-    albums?: Array<{
-        albumId: string;
-    }>;
-}
 
 const data: Record<string, EmotionData> = {
     joy: {
@@ -202,7 +196,7 @@ const MusicCard = ({
     artist,
     album,
     cover,
-    type = "song",
+    type = "track",
     previewUrl,
     spotifyUrl,
     youtubeData,
@@ -214,7 +208,7 @@ const MusicCard = ({
     artist: string;
     album?: string;
     cover?: string | null;
-    type?: "song" | "album";
+    type?: "track" | "album";
     previewUrl?: string | null;
     spotifyUrl?: string;
     youtubeData?: {
@@ -222,11 +216,27 @@ const MusicCard = ({
         title: string;
         thumbnail: string;
     } | null;
-    itemId?: string;
-    onFavoriteToggle?: (itemId: string, itemType: string, isFavorited: boolean) => void;
-    isFavorited?: boolean;
-}) => {
-    const [favoriteLoading, setFavoriteLoading] = useState(false);
+     itemId?: string;
+     onFavoriteToggle?: (
+       itemId: string,
+       itemType: string,
+       isFavorited: boolean
+     ) => Promise<void>;
+     isFavorited?: boolean;
+   }) => {
+     const [favoriteLoading, setFavoriteLoading] = useState(false);
+     const handleFavoriteClick = async () => {
+       if (!itemId || !onFavoriteToggle) return;
+   
+       setFavoriteLoading(true);
+       try {
+         await onFavoriteToggle(itemId, type, isFavorited || false);
+       } catch (error) {
+         console.error("Error toggling favorite:", error);
+       } finally {
+         setFavoriteLoading(false);
+       }
+     };
 
     const youtubeUrl = youtubeData?.videoId
         ? `https://www.youtube.com/watch?v=${youtubeData.videoId}`
@@ -235,19 +245,6 @@ const MusicCard = ({
     const handleYouTubePlay = () => {
         if (youtubeUrl) {
             window.open(youtubeUrl, '_blank', 'noopener,noreferrer');
-        }
-    };
-
-    const handleFavoriteClick = async () => {
-        if (!itemId || !onFavoriteToggle) return;
-
-        setFavoriteLoading(true);
-        try {
-            await onFavoriteToggle(itemId, type, isFavorited || false);
-        } catch (error) {
-            console.error('Error toggling favorite:', error);
-        } finally {
-            setFavoriteLoading(false);
         }
     };
 
@@ -275,7 +272,7 @@ const MusicCard = ({
                 <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 truncate">{title}</h3>
                     <p className="text-purple-600 text-sm truncate">{artist}</p>
-                    {album && type === "song" && (
+                    {album && type === "track" && (
                         <p className="text-gray-500 text-xs truncate">{album}</p>
                     )}
                     <div className="flex gap-2 mt-2 flex-wrap">
@@ -315,7 +312,7 @@ const MusicCard = ({
                         )}
                     </button>
                     {/* <div className="flex gap-2"> */}
-                    {type === "song" && youtubeUrl && (
+                    {type === "track" && youtubeUrl && (
                         <button
                             onClick={handleYouTubePlay}
                             className="cursor-pointer mb-3"
@@ -356,28 +353,103 @@ export default function CardCarousel() {
 
     const colors = Object.entries(data);
 
-    const loadUserFavorites = async () => {
-        try {
-            const response = await api.get<FavoritesResponse>('/api/ai-song/favorites');
-            const userFavorites = new Set<string>();
+  const { isSignedIn, isLoaded, getToken, userId } = useAuth();
 
-            response.data.tracks?.forEach((track) => {
-                userFavorites.add(track.trackId);
-            });
+  const getApiInstance = async () => {
+    console.log("=== Getting API instance ===");
+    console.log("isSignedIn:", isSignedIn);
+    console.log("isLoaded:", isLoaded);
+    console.log("userId:", userId);
 
-            response.data.albums?.forEach((album) => {
-                userFavorites.add(album.albumId);
-            });
+    if (!isLoaded) {
+      throw new Error("Clerk not loaded yet");
+    }
 
-            setFavorites(userFavorites);
-        } catch (error) {
-            console.error('Error loading favorites:', error);
+    if (!isSignedIn || !userId) {
+      console.log("User not signed in, using basic API");
+      return api;
+    }
+
+    try {
+      console.log("Getting session token...");
+      const sessionToken = await getToken();
+      console.log(
+        "Session token:",
+        sessionToken ? `${sessionToken.substring(0, 20)}...` : "null"
+      );
+
+      if (!sessionToken) {
+        console.warn("No session token available");
+        throw new Error("No session token available");
+      }
+
+      return createAuthenticatedApi(sessionToken);
+    } catch (error: any) {
+      console.error("Error getting session token:", error);
+      throw error; 
+    }
+  };
+
+  const loadFavoritesForCurrentItems = async () => {
+    if (!isLoaded) {
+      console.log("Clerk not loaded, skipping favorites");
+      return;
+    }
+
+    if (!isSignedIn || !userId) {
+      console.log("User not signed in, clearing favorites");
+      setFavorites(new Set());
+      return;
+    }
+
+    const allItemIds = [
+      ...songs.map((song) => song.songId).filter(Boolean),
+      ...albums.map((album) => album.albumId).filter(Boolean),
+    ] as string[];
+
+    if (allItemIds.length === 0) {
+      console.log("No items to check favorites for");
+      return;
+    }
+
+    try {
+      console.log("=== Loading favorites ===");
+      console.log("Item IDs:", allItemIds);
+
+      const apiInstance = await getApiInstance();
+
+      const response = await apiInstance.post<{ favorited: string[] }>(
+        "/api/ai-song/favorites/check",
+        {
+          itemIds: allItemIds,
         }
-    };
+      );
 
-    useEffect(() => {
-        loadUserFavorites();
-    }, []);
+      console.log("✅ Favorites loaded:", response.data.favorited);
+      setFavorites(new Set(response.data.favorited));
+    } catch (error: any) {
+      console.error("❌ Error loading favorites:", error);
+
+      if (error.response?.status === 401) {
+        console.warn(
+          "Authentication failed - clearing favorites and continuing"
+        );
+        setFavorites(new Set());
+      } else if (error.message === "No session token available") {
+        console.warn(
+          "No session token - user may need to refresh or sign in again"
+        );
+        setFavorites(new Set());
+      } else {
+        console.error("Unexpected error loading favorites:", error.message);
+      }
+    }
+  };
+  useEffect(() => {
+    if (isLoaded && (songs.length > 0 || albums.length > 0)) {
+      loadFavoritesForCurrentItems();
+    }
+  }, [songs, albums, isSignedIn, isLoaded]);
 
     const handleMoodClick = (index: number) => {
         // console.log(index);
@@ -436,27 +508,79 @@ export default function CardCarousel() {
         }
     };
 
-    const handleFavoriteToggle = async (itemId: string, itemType: string, isFavorited: boolean) => {
-        try {
-            if (isFavorited) {
-                await api.delete(`/api/ai-song/favorites/${itemId}`);
-                setFavorites(prev => {
-                    const newFavorites = new Set(prev);
-                    newFavorites.delete(itemId);
-                    return newFavorites;
-                });
-            } else {
-                await api.post("/api/ai-song/favorites", {
-                    itemId,
-                    itemType
-                });
-                setFavorites(prev => new Set([...prev, itemId]));
-            }
-        } catch (error) {
-            console.error('Error toggling favorite:', error);
-            alert('Failed to update favorites. Please try again.');
+    const handleFavoriteToggle = async (
+        itemId: string,
+        itemType: string,
+        isFavorited: boolean
+      ): Promise<void> => {
+        if (!isLoaded) {
+          alert("Please wait for the page to load.");
+          return;
         }
-    };
+    
+        if (!isSignedIn) {
+          alert("Please sign in to manage favorites.");
+          return;
+        }
+    
+        try {
+          console.log("=== Toggling favorite ===");
+          console.log(
+            `ID: ${itemId}, Type: ${itemType}, Currently Favorited: ${isFavorited}`
+          );
+    
+          const apiInstance = await getApiInstance();
+    
+          if (isFavorited) {
+            console.log(`Removing ${itemId} from favorites...`);
+            await apiInstance.delete(`/api/ai-song/favorites/${itemId}`);
+            console.log(`✅ Successfully removed ${itemId} from favorites`);
+    
+            setFavorites((prev) => {
+              const newFavorites = new Set(prev);
+              newFavorites.delete(itemId);
+              return newFavorites;
+            });
+          } else {
+            console.log(`Adding ${itemId} to favorites...`);
+            await apiInstance.post("/api/ai-song/favorites", {
+              itemId,
+              itemType,
+            });
+            console.log(`✅ Successfully added ${itemId} to favorites`);
+    
+            setFavorites((prev) => new Set([...prev, itemId]));
+          }
+        } catch (error: any) {
+          console.error("❌ Error toggling favorite:", error);
+    
+          let errorMessage = "Failed to update favorites. Please try again.";
+    
+          if (error.response?.status === 401) {
+            errorMessage = "Authentication failed. Please sign in again.";
+          } else if (error.response?.status === 403) {
+            errorMessage = "Access denied. Please check your permissions.";
+          } else if (error.response?.status === 429) {
+            errorMessage = "Too many requests. Please wait a moment and try again.";
+          } else if (error.response?.status >= 500) {
+            errorMessage = "Server error. Please try again later.";
+          } else if (error.code === "NETWORK_ERROR" || !error.response) {
+            errorMessage = "Network error. Please check your connection.";
+          }
+    
+          alert(errorMessage);
+        }
+      };
+    
+    //   const resetForm = () => {
+    //     setMood(null);
+    //     setGenre(null);
+    //     lastActivity(null);
+    //     setSongs([]);
+    //     setAlbums([]);
+    //     setFromCache(false);
+    //     setFavorites(new Set());
+    //   };
 
     return (
         <div
@@ -670,7 +794,7 @@ export default function CardCarousel() {
             >
                 <h1
                     className="relative text-white text-center font-bold z-2
-                transition-all duration-700 ease-in-out transform font-[inter] font-fredoka text-3xl">
+                transition-all duration-700 ease-in-out transform font-fredoka text-3xl">
                     JUST SWIPE
                 </h1>
                 <Swiper
@@ -765,7 +889,7 @@ export default function CardCarousel() {
                                                     artist={song?.artistName || "Unknown Artist"}
                                                     album={song?.albumName || "Unknown Album"}
                                                     cover={song?.albumCover}
-                                                    type="song"
+                                                    type="track"
                                                     previewUrl={song?.previewUrl}
                                                     spotifyUrl={song?.spotifyUrl}
                                                     youtubeData={song?.youtubeData}

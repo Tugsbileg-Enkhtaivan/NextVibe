@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Music2, Heart, Clock, User, Play, Search, Trash2, AlertCircle, ChevronDown } from 'lucide-react';
-import api from "../utils/axios";
+import { useAuth } from '@clerk/nextjs';
+import { createAuthenticatedApi } from "../utils/axios";
 import Header from '../components/Header';
 
 type EmotionData = {
@@ -206,7 +207,6 @@ const HistoryCard = ({
       BIKING: "/assets/biking-icon.webp",
       DANCING: "/assets/dancing-icon.webp",
       GARDENING: "/assets/gardening-icon.webp",
-
     };
     return colors[activity || ''] || '/assets/hamster.webp';
   };
@@ -224,17 +224,14 @@ const HistoryCard = ({
     audio.play().catch(console.error);
   };
 
-  /// HANDLE FAVORITE ???? CONSOLE LOG L BAIHIIN
+  /// HANDLE FAVORITE
 
   const handleFavorite = (itemId: string, itemType: 'song' | 'album') => {
-    // Implement favorite functionality
     console.log(`Adding ${itemType} ${itemId} to favorites`);
   };
 
-  // console.log(getGenreImage(recommendation.genres[0]), "genres")
-
   return (
-    <div className={`rounded-xl shadow-sm border-6 border-gray-100 relative`} style={{ background: `${getMoodColor(recommendation.mood)}` }}> {/* END OORCHLOLT HIISEN CARDNII BACKGROUND */}
+    <div className={`rounded-xl shadow-sm border-6 border-gray-100 relative`} style={{ background: `${getMoodColor(recommendation.mood)}` }}>
       <img src={getGenreImage(recommendation.genres[0])} className='w-14 absolute top-[-20px] right-[-15px] rotate-20' />
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
@@ -371,6 +368,7 @@ const AuthError = ({ onRetry }: { onRetry: () => void }) => (
 /// HISTORY PAGE
 
 export default function HistoryPage() {
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const [history, setHistory] = useState<RecommendationHistory[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -380,15 +378,27 @@ export default function HistoryPage() {
   const [selectedActivity, setSelectedActivity] = useState<string>('all');
 
   const fetchHistory = async () => {
+    if (!isLoaded || !isSignedIn) {
+      setAuthError(true);
+      setError('Please sign in to view your history');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
       setAuthError(false);
 
-      // Add a small delay to ensure Clerk auth is ready
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Get the session token from Clerk
+      const token = await getToken();
+      if (!token) {
+        throw new Error('No session token available');
+      }
 
-      const response = await api.get<RecommendationHistory[]>("/api/ai-song/history");
+      // Create authenticated API instance with token
+      const authenticatedApi = createAuthenticatedApi(token);
+      
+      const response = await authenticatedApi.get<RecommendationHistory[]>("/api/ai-song/history");
       setHistory(response.data);
     } catch (error: any) {
       console.error('Failed to fetch history:', error);
@@ -405,12 +415,25 @@ export default function HistoryPage() {
   };
 
   useEffect(() => {
-    fetchHistory();
-  }, []);
+    if (isLoaded) {
+      fetchHistory();
+    }
+  }, [isLoaded, isSignedIn]);
 
   const handleDelete = async (id: string) => {
+    if (!isSignedIn) {
+      setAuthError(true);
+      return;
+    }
+
     try {
-      await api.delete(`/api/ai-song/history/${id}`);
+      const token = await getToken();
+      if (!token) {
+        throw new Error('No session token available');
+      }
+
+      const authenticatedApi = createAuthenticatedApi(token);
+      await authenticatedApi.delete(`/api/ai-song/history/${id}`);
       setHistory(prev => prev.filter(item => item.id !== id));
     } catch (error: any) {
       console.error('Failed to delete history item:', error);
@@ -426,9 +449,20 @@ export default function HistoryPage() {
   /// CLEAR HISTORY
 
   const clearAllHistory = async () => {
+    if (!isSignedIn) {
+      setAuthError(true);
+      return;
+    }
+
     if (window.confirm('Are you sure you want to clear all history?')) {
       try {
-        await api.delete('/api/ai-song/history');
+        const token = await getToken();
+        if (!token) {
+          throw new Error('No session token available');
+        }
+
+        const authenticatedApi = createAuthenticatedApi(token);
+        await authenticatedApi.delete('/api/ai-song/history');
         setHistory([]);
       } catch (error: any) {
         console.error('Failed to clear history:', error);
@@ -465,17 +499,38 @@ export default function HistoryPage() {
   const moodOptions = Object.values(MoodType);
   const activityOptions = Object.values(ActivityType);
 
-  // Helper function to format enum values for display ----- RECOMMENDATION HISTORY
+  // Helper function to format enum values for display
   const formatEnumValue = (value: string) => {
     return value.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  // Show loading state while Clerk is loading
+  if (!isLoaded) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  // Show auth error if not signed in
+  if (!isSignedIn) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen relative" style={{
+        background: "linear-gradient(135deg, #00F260 0%, #0575E6 100%)"
+      }}>
+        <Header />
+        <div className="mt-10">
+          <AuthError onRetry={() => window.location.reload()} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen relative" style={{
       background: "linear-gradient(135deg, #00F260 0%, #0575E6 100%)"
-    }
-    }>
-
+    }}>
       <Header />
 
       <div className="mb-8 mt-10">

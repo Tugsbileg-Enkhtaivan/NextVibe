@@ -78,7 +78,7 @@ const MusicCard = ({
   artist,
   album,
   cover,
-  type = "song",
+  type = "track",
   previewUrl,
   onPlay,
   onFavorite,
@@ -88,7 +88,7 @@ const MusicCard = ({
   artist: string;
   album?: string;
   cover?: string;
-  type?: "song" | "album";
+  type?: "track" | "album";
   previewUrl?: string;
   onPlay?: () => void;
   onFavorite?: () => void;
@@ -120,7 +120,7 @@ const MusicCard = ({
       <div className="flex-1 min-w-0">
         <h3 className="font-semibold text-gray-900 truncate">{title}</h3>
         <p className="text-purple-600 text-sm truncate">{artist}</p>
-        {album && type === "song" && (
+        {album && type === "track" && (
           <p className="text-gray-500 text-xs truncate">{album}</p>
         )}
       </div>
@@ -310,7 +310,7 @@ const HistoryCard = ({
                     artist={track.artistNames.join(', ')}
                     album={track.albumName}
                     cover={track.imageUrl}
-                    type="song"
+                    type="track"
                     previewUrl={track.previewUrl}
                     onPlay={() => track.previewUrl && handlePlay(track.previewUrl)}
                     onFavorite={() => handleFavorite(track.trackId, 'song')}

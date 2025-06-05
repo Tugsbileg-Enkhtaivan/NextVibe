@@ -319,7 +319,7 @@ export const getUserRecommendationHistory = async (
 ) => {
   try {
     await ensureUserExistsInService(userId);
-
+    
     const recommendations = await prisma.recommendation.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
@@ -332,12 +332,12 @@ export const getUserRecommendationHistory = async (
         }
       }
     });
-
-    console.log(`✅ Retrieved ${recommendations.length} recommendations for user ${userId}`);
+    
+    console.log(`Retrieved ${recommendations.length} recommendations for user ${userId}`);
     return recommendations;
   } catch (error) {
     console.error('❌ Error retrieving recommendation history:', error);
-    return [];
+    throw new Error(`Failed to retrieve recommendation history: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
@@ -634,17 +634,17 @@ export const removeFromUserFavorites = async (
     console.log(`🔄 Removing from favorites - User: ${userId}, Item: ${itemId}`);
     
     const result = await prisma.favorite.deleteMany({
-      where: { 
-        userId, 
-        itemId 
+      where: {
+        userId,
+        itemId
       }
     });
     
-    console.log(`✅ Removed ${result.count} favorite(s) for user ${userId}`);
+    console.log(`Removed ${result.count} favorite(s) for user ${userId}`);
     return result;
     
   } catch (error: any) {
-    console.error('❌ Error removing from favorites:', error);
+    console.error('Error removing from favorites:', error);
     throw new Error(`Failed to remove item from favorites: ${error.message}`);
   }
 };

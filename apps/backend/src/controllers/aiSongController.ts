@@ -627,15 +627,10 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       isAnonymous: userId === "anonymous"
     });
 
-    // SAVE RECOMMENDATION HISTORY - FIXED VERSION
-// FIXED VERSION - Replace the history saving section in your controller
-
-// SAVE RECOMMENDATION HISTORY - FIXED VERSION
 if (userId !== "anonymous") {
   console.log('💾 Attempting to save recommendation history...');
   
   try {
-    // FIXED: Proper data structure matching your service function
     const historyData = {
       type: RecommendationType.MOOD_BASED,
       mood: convertToMoodType(mood),
@@ -681,13 +676,11 @@ if (userId !== "anonymous") {
       sampleAlbum: historyData.albums[0] || null,
     });
 
-    // FIXED: Use the proper saveUserRecommendationHistory function
     const savedRecommendation = await saveUserRecommendationHistory(userId, historyData);
     
     console.log('✅ Successfully saved recommendation history!');
     console.log('📋 Saved recommendation ID:', savedRecommendation.id);
 
-    // FIXED: Better verification
     const verificationHistory = await getUserRecommendationHistory(userId, 1);
     console.log('📊 Verification - Latest recommendation:', {
       found: verificationHistory.length > 0,

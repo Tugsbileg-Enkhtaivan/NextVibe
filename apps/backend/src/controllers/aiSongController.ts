@@ -899,11 +899,20 @@ export const getRecommendationHistory = async (
       });
     }
 
-    res.json({
-      success: true,
-      count: history.length,
-      data: history
-    });
+    // Return the array directly (not wrapped in an object)
+    // This matches what your frontend expects
+// Convert genres from string to array if needed
+const normalizedHistory = history.map(entry => ({
+  ...entry,
+  genres: Array.isArray(entry.genres)
+    ? entry.genres
+    : typeof entry.genres === 'string'
+      ? [entry.genres]
+      : []
+}));
+
+res.json(normalizedHistory);
+    
   } catch (error: any) {
     console.error("[GET HISTORY ERROR]", error);
     console.error("Error details:", {

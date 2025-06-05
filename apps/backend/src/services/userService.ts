@@ -255,6 +255,12 @@ export const saveUserRecommendationHistory = async (
   try {
     console.log('🏁 saveUserRecommendationHistory called');
     console.log('👤 User ID received:', userId);
+    
+    // Validate userId
+    if (!userId || userId.trim() === '') {
+      throw new Error('User ID is required and cannot be empty');
+    }
+    
     console.log('📊 Recommendation data received:', {
       type: recommendation.type,
       mood: recommendation.mood,
@@ -263,78 +269,130 @@ export const saveUserRecommendationHistory = async (
       albumsCount: recommendation.albums?.length || 0
     });
 
-    console.log('🔧 Calling ensureUserExistsInService...');
-    await ensureUserExistsInService(userId);
-    console.log('✅ ensureUserExistsInService completed');
+    // FIXED: Better user validation and creation
+    console.log('🔧 Ensuring user exists in database...');
+    
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+    
+    if (!existingUser) {
+      console.log('❌ User does not exist, creating user entry...');
+      
+      try {
+        await prisma.user.create({
+          data: {
+            id: userId,
+            // Add required fields - adjust these based on your User schema
+            email: userId.includes('@') ? userId : `${userId}@temp.com`,
+            username: `user_${userId.slice(-8)}`, // Create a username from last 8 chars of userId
+            // Add any other required fields from your Prisma User model
+          }
+        });
+        console.log('✅ User created successfully');
+      } catch (userCreateError: any) {
+        console.error('❌ Failed to create user:', userCreateError);
+        if (userCreateError.code === 'P2002') {
+          console.log('⚠️ User already exists (race condition), continuing...');
+        } else {
+          throw new Error(`Failed to create user: ${userCreateError.message}`);
+        }
+      }
+    } else {
+      console.log('✅ User already exists in database');
+    }
 
     console.log('💾 Starting Prisma create operation...');
 
+    // Prepare tracks data with better error handling
+    const tracksData = recommendation.tracks?.map((track, index) => {
+      const trackId = track.trackId || track.songId || track.id;
+      
+      if (!trackId) {
+        console.warn(`⚠️ Track ${index + 1} missing ID, skipping:`, track);
+        return null;
+      }
+
+      const trackData = {
+        trackId: trackId,
+        position: index,
+        name: track.name || track.songName || 'Unknown Track',
+        artistNames: Array.isArray(track.artistNames) 
+          ? track.artistNames.filter((name:string) => name && name.trim() !== '')
+          : [(track.artistName || track.artist || 'Unknown Artist')].filter(name => name && name.trim() !== ''),
+        albumName: track.albumName || track.album?.name || 'Unknown Album',
+        imageUrl: track.imageUrl || track.albumCover || track.album?.images?.[0]?.url || null,
+        previewUrl: track.previewUrl || track.preview_url || null,
+        duration: track.duration || track.duration_ms || null,
+        popularity: track.popularity || null
+      };
+      
+      console.log(`🎵 Preparing track ${index + 1}:`, {
+        trackId: trackData.trackId,
+        name: trackData.name,
+        artistNames: trackData.artistNames
+      });
+      
+      return trackData;
+    }).filter(track => track !== null) || [];
+
+    // Prepare albums data with better error handling
+    const albumsData = recommendation.albums?.map((album, index) => {
+      const albumId = album.albumId || album.id;
+      
+      if (!albumId) {
+        console.warn(`⚠️ Album ${index + 1} missing ID, skipping:`, album);
+        return null;
+      }
+
+      const albumData = {
+        albumId: albumId,
+        position: index,
+        name: album.name || album.albumName || 'Unknown Album',
+        artistNames: Array.isArray(album.artistNames)
+          ? album.artistNames.filter((name:string) => name && name.trim() !== '')
+          : [(album.artistName || album.artist || 'Unknown Artist')].filter(name => name && name.trim() !== ''),
+        imageUrl: album.imageUrl || album.albumCover || album.images?.[0]?.url || null,
+        releaseDate: album.releaseDate || album.release_date || null,
+        totalTracks: album.totalTracks || album.total_tracks || null
+      };
+      
+      console.log(`💽 Preparing album ${index + 1}:`, {
+        albumId: albumData.albumId,
+        name: albumData.name,
+        artistNames: albumData.artistNames
+      });
+      
+      return albumData;
+    }).filter(album => album !== null) || [];
+
+    // Create the recommendation with prepared data
     const savedRecommendation = await prisma.recommendation.create({
       data: {
-        userId,
+        userId: userId.trim(), // Ensure no whitespace
         type: recommendation.type,
         mood: recommendation.mood,
         energy: recommendation.energy,
         valence: recommendation.valence,
-        genres: recommendation.genres,
+        genres: recommendation.genres || [],
         activity: recommendation.activity,
         seedTracks: recommendation.seedTracks || [],
         seedArtists: recommendation.seedArtists || [],
-        parameters: recommendation.parameters,
+        parameters: recommendation.parameters || {},
         tracks: {
-          create: recommendation.tracks?.map((track, index) => {
-            // Fix: Use the correct property names from your controller
-            const trackData = {
-              trackId: track.trackId || track.songId || track.id,
-              position: index,
-              name: track.name || track.songName,
-              artistNames: Array.isArray(track.artistNames) 
-                ? track.artistNames
-                : [track.artistName || track.artist || 'Unknown'],
-              albumName: track.albumName || track.album?.name || 'Unknown',
-              imageUrl: track.imageUrl || track.albumCover || track.album?.images?.[0]?.url || null,
-              previewUrl: track.previewUrl || track.preview_url || null,
-              duration: track.duration || track.duration_ms || null,
-              popularity: track.popularity || null
-            };
-            
-            console.log(`🎵 Preparing track ${index + 1}:`, {
-              trackId: trackData.trackId,
-              name: trackData.name,
-              artistNames: trackData.artistNames
-            });
-            
-            return trackData;
-          }) || []
+          create: tracksData
         },
         albums: {
-          create: recommendation.albums?.map((album, index) => {
-            // Fix: Use the correct property names from your controller
-            const albumData = {
-              albumId: album.albumId || album.id,
-              position: index,
-              name: album.name || album.albumName,
-              artistNames: Array.isArray(album.artistNames)
-                ? album.artistNames
-                : [album.artistName || album.artist || 'Unknown'],
-              imageUrl: album.imageUrl || album.albumCover || album.images?.[0]?.url || null,
-              releaseDate: album.releaseDate || album.release_date || null,
-              totalTracks: album.totalTracks || album.total_tracks || null
-            };
-            
-            console.log(`💽 Preparing album ${index + 1}:`, {
-              albumId: albumData.albumId,
-              name: albumData.name,
-              artistNames: albumData.artistNames
-            });
-            
-            return albumData;
-          }) || []
+          create: albumsData
         }
       },
       include: {
-        tracks: true,
-        albums: true
+        tracks: {
+          orderBy: { position: 'asc' }
+        },
+        albums: {
+          orderBy: { position: 'asc' }
+        }
       }
     });
 
@@ -349,44 +407,26 @@ export const saveUserRecommendationHistory = async (
     console.error('❌ Error details:', {
       message: error.message,
       code: error.code,
-      meta: error.meta
+      meta: error.meta,
+      stack: error.stack
     });
-    throw new Error(`Failed to save recommendation history: ${error.message}`);
+    
+    // Re-throw with more context
+    throw new Error(`Failed to save recommendation history for user ${userId}: ${error.message}`);
   }
 };
 
-export const getUserRecommendationHistory = async (userId: string) => {
+// Helper function to get user's recommendation history
+export const getUserRecommendationHistory = async (userId: string, limit: number = 10) => {
   try {
-    console.log('🔍 Getting recommendation history for user:', userId);
-    
-    // First, check if user exists
-    const userExists = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-    
-    console.log('👤 User exists:', !!userExists);
-    
-    // Check total recommendations count in database
-    const totalRecommendations = await prisma.recommendation.count({
-      where: { userId }
-    });
-    
-    console.log('📊 Total recommendations in DB for user:', totalRecommendations);
-    
-    // If no recommendations, return early with detailed info
-    if (totalRecommendations === 0) {
-      console.log('⚠️ No recommendations found for user:', userId);
-      
-      // Check if there are ANY recommendations in the database at all
-      const anyRecommendations = await prisma.recommendation.count();
-      console.log('📈 Total recommendations in entire database:', anyRecommendations);
-      
-      return [];
+    if (!userId || userId.trim() === '') {
+      throw new Error('User ID is required');
     }
-    
-    // Get recommendations with full details
+
     const recommendations = await prisma.recommendation.findMany({
-      where: { userId },
+      where: {
+        userId: userId.trim()
+      },
       include: {
         tracks: {
           orderBy: { position: 'asc' }
@@ -395,31 +435,17 @@ export const getUserRecommendationHistory = async (userId: string) => {
           orderBy: { position: 'asc' }
         }
       },
-      orderBy: { createdAt: 'desc' },
-      take: 50 // Limit to last 50 recommendations
+      orderBy: {
+        createdAt: 'desc'
+      },
+      take: limit
     });
 
-    console.log('✅ Retrieved recommendations:', {
-      count: recommendations.length,
-      firstRecommendation: recommendations[0] ? {
-        id: recommendations[0].id,
-        type: recommendations[0].type,
-        createdAt: recommendations[0].createdAt,
-        tracksCount: recommendations[0].tracks?.length || 0,
-        albumsCount: recommendations[0].albums?.length || 0
-      } : null
-    });
-
+    console.log(`📋 Found ${recommendations.length} recommendations for user ${userId}`);
     return recommendations;
   } catch (error: any) {
-    console.error('❌ Error getting recommendation history:', error);
-    console.error('❌ Error details:', {
-      message: error.message,
-      code: error.code,
-      meta: error.meta,
-      stack: error.stack
-    });
-    throw new Error(`Failed to get recommendation history: ${error.message}`);
+    console.error('❌ Error fetching recommendation history:', error);
+    throw new Error(`Failed to fetch recommendation history: ${error.message}`);
   }
 };
 

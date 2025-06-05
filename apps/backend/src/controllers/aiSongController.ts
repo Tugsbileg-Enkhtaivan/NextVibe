@@ -259,6 +259,10 @@ export const getAISongSuggestions = async (
   const { mood, genre, activity } = req.query as { mood: string; genre: string; activity: string; };
   const userId = req.user?.id || "anonymous";
 
+  console.log('🎯 getAISongSuggestions called');
+  console.log('👤 User ID:', userId);
+  console.log('📝 Parameters:', { mood, genre, activity });
+
   if (!mood || !genre || !activity) {
     res.status(400).json({ error: "Mood, genre, and activity are required parameters" });
     return;
@@ -276,6 +280,7 @@ export const getAISongSuggestions = async (
       Math.random() > 0.3;
 
     if (shouldUseCache) {
+      console.log('📦 Returning cached recommendations');
       res.json({
         songs: cachedRecommendations.songs,
         albums: cachedRecommendations.albums,
@@ -346,6 +351,7 @@ ALBUMS:
 Do NOT include song lists inside the ALBUM section. Keep output minimal and in correct format.
 `;
 
+    console.log('🤖 Getting GPT recommendations...');
     const gptText = await getGPTRecommendations(prompt);
     const songsSection = gptText.match(/SONGS:([\s\S]*?)ALBUMS:/i);
     const albumsSection = gptText.match(/ALBUMS:([\s\S]*)/i);
@@ -399,6 +405,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       }
     };
 
+    console.log('🎵 Processing songs...');
     // Process songs
     let verifiedSongs = await Promise.all(
       songs.map(async (item) => {
@@ -440,7 +447,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
                 videoId: youtubeResults[0].id.videoId,
                 title: youtubeResults[0].snippet.title,
                 thumbnail: youtubeResults[0].snippet.thumbnails.high.url,
-                // Add the full YouTube URL
                 url: `https://www.youtube.com/watch?v=${youtubeResults[0].id.videoId}`
               };
             }
@@ -466,6 +472,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       })
     );
 
+    console.log('💽 Processing albums...');
     // Process albums
     let verifiedAlbums = await Promise.all(
       albums.map(async (item) => {
@@ -493,7 +500,6 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
     
           if (!album) return null;
     
-          // Safe property access with type checking
           const albumCover = hasImages(album) && album.images.length > 0 
             ? album.images[0].url 
             : null;
@@ -607,116 +613,120 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       finalSongs = validVerifiedSongs.slice(0, 5);
     }
 
+    // Cache the results
     userRecommendationCache.set(cacheKey, {
       timestamp: Date.now(),
       songs: finalSongs,
       albums: finalAlbums,
     });
 
-    // Replace the history saving section in your getAISongSuggestions function
-// Replace the history saving section in your getAISongSuggestions function with this:
-if (userId !== "anonymous") {
-  try {
-    console.log('🔄 Starting recommendation history save process...');
-    console.log('👤 User ID for save:', userId);
-    console.log('🎯 User ID type:', typeof userId);
-    console.log('🎯 User ID length:', userId.length);
-    
-    // Check if user exists before saving
-    const userExists = await prisma.user.findUnique({
-      where: { id: userId }
+    console.log('📊 Final results:', {
+      songsCount: finalSongs.length,
+      albumsCount: finalAlbums.length,
+      userId: userId,
+      isAnonymous: userId === "anonymous"
     });
-    console.log('👤 User exists for save:', !!userExists);
-    
-    if (!userExists) {
-      console.log('❌ User does not exist - cannot save history');
-      // You might want to create the user here or handle this case
+
+    // SAVE RECOMMENDATION HISTORY - FIXED VERSION
+    if (userId !== "anonymous") {
+      console.log('💾 Attempting to save recommendation history...');
+      
+      try {
+        // Verify user exists first
+        const userExists = await prisma.user.findUnique({
+          where: { id: userId }
+        });
+        
+        if (!userExists) {
+          console.log('❌ User does not exist in database:', userId);
+          console.log('🔍 Creating user entry...');
+          
+          // You might need to create the user first
+          await prisma.user.create({ 
+            data: {
+              id: userId,
+              email: '', // or from Clerk
+              username: 'anonymous_' + Math.floor(Math.random() * 10000) // example fallback
+            }
+          });          
+          
+          console.log('✅ User created successfully');
+        } else {
+          console.log('✅ User confirmed to exist');
+        }
+        
+        const historyData = {
+          type: RecommendationType.MOOD_BASED,
+          mood: convertToMoodType(mood),
+          activity: convertToActivityType(activity),
+          genres: [genre],
+          seedTracks: [],
+          seedArtists: [],
+          parameters: { mood, genre, activity },
+          tracks: finalSongs.map((song, index) => ({
+            trackId: song.songId,
+            position: index,
+            name: song.songName,
+            artistNames: [song.artistName],
+            albumName: song.albumName,
+            imageUrl: song.albumCover,
+            previewUrl: song.previewUrl,
+            duration: null,
+            popularity: null,
+          })),
+          albums: finalAlbums.map((album, index) => ({
+            albumId: album.albumId,
+            position: index,
+            name: album.albumName,
+            artistNames: [album.artistName],
+            imageUrl: album.albumCover,
+            releaseDate: album.releaseDate,
+            totalTracks: null,
+          })),
+        };
+
+        console.log('📋 Prepared history data:', {
+          userId,
+          type: historyData.type,
+          mood: historyData.mood,
+          activity: historyData.activity,
+          tracksCount: historyData.tracks.length,
+          albumsCount: historyData.albums.length,
+        });
+
+        const savedRecommendation = await saveUserRecommendationHistory(userId, historyData);
+        
+        console.log('✅ Successfully saved recommendation history!');
+        console.log('📋 Saved recommendation ID:', savedRecommendation.id);
+
+        // Verify the save
+        const verificationCount = await prisma.recommendation.count({ 
+          where: { userId } 
+        });
+        console.log('📊 Total recommendations for user after save:', verificationCount);
+        
+      } catch (saveError: any) {
+        console.error("❌ FAILED TO SAVE RECOMMENDATION HISTORY");
+        console.error("❌ Error type:", saveError.constructor.name);
+        console.error("❌ Error message:", saveError.message);
+        console.error("❌ Error code:", saveError.code);
+        console.error("❌ Error meta:", saveError.meta);
+        console.error("❌ Full error:", saveError);
+        
+        // Don't let save errors break the API response
+        // But log them prominently for debugging
+      }
     } else {
-      console.log('✅ User confirmed to exist, proceeding with save...');
+      console.log('🚫 Skipping history save - anonymous user');
     }
-    
-    const historyData = {
-      type: RecommendationType.MOOD_BASED,
-      mood: convertToMoodType(mood),
-      activity: convertToActivityType(activity),
-      genres: [genre],
-      seedTracks: [],
-      seedArtists: [],
-      parameters: { mood, genre, activity },
-      tracks: finalSongs.map((song, index) => ({
-        trackId: song.songId,
-        position: index,
-        name: song.songName,
-        artistNames: [song.artistName],
-        albumName: song.albumName,
-        imageUrl: song.albumCover,
-        previewUrl: song.previewUrl,
-        duration: null,
-        popularity: null,
-      })),
-      albums: finalAlbums.map((album, index) => ({
-        albumId: album.albumId,
-        position: index,
-        name: album.albumName,
-        artistNames: [album.artistName],
-        imageUrl: album.albumCover,
-        releaseDate: album.releaseDate,
-        totalTracks: null,
-      })),
-    };
 
-    console.log('📋 History data prepared:', {
-      userId,
-      type: historyData.type,
-      mood: historyData.mood,
-      activity: historyData.activity,
-      tracksCount: historyData.tracks.length,
-      albumsCount: historyData.albums.length,
-      genres: historyData.genres
-    });
-
-    console.log('🎵 Sample track data:', historyData.tracks[0]);
-    console.log('💽 Sample album data:', historyData.albums[0]);
-
-    console.log('💾 Calling saveUserRecommendationHistory...');
-    const savedRecommendation = await saveUserRecommendationHistory(userId, historyData);
-    
-    console.log('✅ Save completed successfully!');
-    console.log('📋 Saved recommendation details:', {
-      id: savedRecommendation.id,
-      userId: savedRecommendation.userId,
-      type: savedRecommendation.type,
-      createdAt: savedRecommendation.createdAt,
-      tracksCreated: savedRecommendation.tracks.length,
-      albumsCreated: savedRecommendation.albums.length
-    });
-
-    // Verify the save by immediately checking the database
-    console.log('🔍 Verifying save by checking database...');
-    const verificationCount = await prisma.recommendation.count({ 
-      where: { userId } 
-    });
-    console.log('📊 Total recommendations after save:', verificationCount);
-    
-  } catch (error: any) {
-    console.error("❌ CRITICAL: Failed to save recommendation history");
-    console.error("❌ Error type:", error.constructor.name);
-    console.error("❌ Error message:", error.message);
-    console.error("❌ Error code:", error.code);
-    console.error("❌ Error meta:", error.meta);
-    console.error("❌ Full error:", error);
-    console.error("❌ Stack trace:", error.stack);
-    
-    // This is important - don't just warn, this needs to be fixed
-    throw error; // Re-throw to see if this breaks your API response
-  }
-}
-
+    console.log('📤 Sending response to client...');
     res.json({
       songs: finalSongs,
       albums: finalAlbums,
       fromCache: false,
     });
+    
   } catch (err: any) {
     console.error("[AI SONG SEARCH ERROR]", err.message || err);
     res.status(500).json({ error: "Failed to retrieve music recommendations" });

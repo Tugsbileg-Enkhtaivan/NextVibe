@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Heart, Music2, Play, Youtube, Trash2, Grid, List, ChevronDown } from 'lucide-react';
 import api from '../utils/axios';
+import Header from "../components/Header";
 
 interface Song {
   songName?: string;
@@ -283,7 +284,10 @@ export default function FavoritesPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto min-h-screen bg-gradient-to-r from-red-500 to-pink-500">
+    <div className="max-w-4xl mx-auto min-h-screen bg-gradient-to-r from-red-500 to-pink-500 relative">
+
+      <Header />
+
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-8">

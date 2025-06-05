@@ -1,47 +1,69 @@
-"use client";
+'use client';
 
-import { Heart, History, Menu, UserRoundPen } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from 'react';
+import { Heart, History, Menu } from 'lucide-react';
 
-export default function MenuComponent() {
-    const [menu, setMenu] = useState(false);
+function MenuBar() {
+  const [isOpen, setIsOpen] = useState(false);
+  const menubarRef = useRef<HTMLDivElement | null>(null);
 
-    return (
-        <main>
-            <Menu
-                onClick={() => setMenu(true)}
-                className={`${menu ? "hidden" : "block"} cursor-pointer`}
-            />
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        menubarRef.current &&
+        event.target instanceof Node &&
+        !menubarRef.current.contains(event.target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+  
+    if (isOpen) {
+        setTimeout(() => {
+          document.addEventListener('click', handleClickOutside);
+        }, 0);
+      }
+  
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isOpen]);
+  
 
-            {/* Animated Menu */}
-            <div
-                className={`
-                    w-fit h-fit bg-white text-black flex-col rounded-sm
-                    transition-transform duration-900 ease-in mt-23 font-[roboto]
-                    ${menu ? "translate-x-0 opacity-100 flex" : "translate-x-30 opacity-0 hidden"}
-                `}
-            >
-                <a href="/profile"
-                    onClick={() => setMenu(false)}
-                    className="w-full py-2 px-5 hover:bg-rose-500 hover:text-white hover:text-xl flex gap-2 justify-end rounded-t-sm scale-105 items-center"
-                >
-                    Profile <UserRoundPen />
-                </a>
-                <hr className="w-[90%] mx-auto" />
-                <a href="/history"
-                    onClick={() => setMenu(false)}
-                    className="w-full py-2 px-5 hover:bg-green-500 hover:text-white hover:text-xl flex gap-2 justify-end  scale-105 items-center [&>*]:hover:text-white text-orange-500"
-                >
-                    History <History className="text-orange-500" size={20} />
-                </a>
-                <hr className="w-[90%] mx-auto" />
-                <a href="/favorite"
-                    onClick={() => setMenu(false)}
-                    className="w-full py-2 px-5 hover:bg-violet-500 hover:text-white hover:text-xl flex gap-2 justify-end rounded-b-sm  scale-105 items-center"
-                >
-                    Favorite <Heart color="red" fill="red" size={18} />
-                </a>
-            </div>
-        </main>
-    );
+  return (
+    <div className="relative">
+      <button onClick={() => setIsOpen((prev) => !prev)}>
+        <Menu
+          className={`${isOpen ? 'hidden' : 'block'} cursor-pointer`}
+          size={24}
+        />
+      </button>
+
+      {/* Fade/Slide Transition */}
+      <div
+        ref={menubarRef}
+        className={`absolute top-12 right-0 w-fit bg-white rounded-lg shadow-lg z-50 transition-all duration-500 transform
+        ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}
+        `}
+      >
+        <a
+          href="/history"
+          onClick={() => setIsOpen(false)}
+          className="w-full py-2 px-5 hover:bg-green-500 hover:text-white hover:text-xl flex gap-2 justify-end items-center text-orange-500"
+        >
+          History <History size={20} />
+        </a>
+        <hr className="w-[90%] mx-auto" />
+        <a
+          href="/favorite"
+          onClick={() => setIsOpen(false)}
+          className="w-full text-red-500 text-red py-2 px-5 hover:bg-violet-500 hover:text-white hover:text-xl flex gap-2 justify-end items-center"
+        >
+          Favorite <Heart color="red" fill="red" size={18} />
+        </a>
+      </div>
+    </div>
+  );
 }
+
+export default MenuBar;

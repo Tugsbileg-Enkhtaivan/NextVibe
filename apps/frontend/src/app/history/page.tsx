@@ -1,8 +1,9 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Music2, Heart, Clock, User, Play, Search, Trash2, AlertCircle, History, ChevronDown } from 'lucide-react';
+import { Music2, Heart, Clock, User, Play, Search, Trash2, AlertCircle, ChevronDown } from 'lucide-react';
 import api from "../utils/axios";
+import Header from '../components/Header';
 
 type EmotionData = {
   image: string;
@@ -470,12 +471,15 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen" style={{
+    <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen relative" style={{
       background: "linear-gradient(135deg, #00F260 0%, #0575E6 100%)"
     }
     }>
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-6">
+
+      <Header />
+
+      <div className="mb-8 mt-10">
+        <div className="flex items-center justify-self-center gap-3 mb-6">
           <img src="/assets/history-icon.webp" className='w-10' />
           <div className='border-l border-white pl-4'>
             <h1 className="text-3xl font-bold text-white">Recommendation History</h1>

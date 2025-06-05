@@ -82,7 +82,7 @@ const FlipSwiperGenre: React.FC<ChildProps> = ({ setGenreIndex }: ChildProps) =>
             {Object.entries(topMusicGenres).map(([key, value]) => {
                 return (
                     <SwiperSlide key={key}>
-                        <div className={`w-[80%] h-25 mx-auto text-white text-xl font-bold rounded-xl text-center flex gap-3 items-center justify-center border-4 border-white ${value.color}`}>
+                        <div className={`max-w-sm w-[80%] h-25 mx-auto text-white text-xl font-bold rounded-xl text-center flex gap-3 items-center justify-center border-4 border-white ${value.color}`}>
                             <img className='w-15' src={value.image} />
                             <h1 className='text-4xl'>{key.toUpperCase()}</h1>
                         </div>

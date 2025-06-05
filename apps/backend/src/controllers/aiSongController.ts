@@ -762,32 +762,27 @@ export const getFavorites = async (req: Request, res: Response): Promise<void> =
 
     const favorites = await getUserFavorites(userId);
     
+    // Transform to flat structure that matches frontend expectations
     const transformedFavorites = {
       tracks: favorites.tracks.map(track => ({
         trackId: track.trackId,
-        createdAt: track.addedAt,
-        song: {
-          songId: track.trackId,
-          songName: track.trackName,
-          artistName: track.artistName,
-          albumName: track.albumName,
-          albumCover: track.albumCover,
-          previewUrl: track.previewUrl,
-          spotifyUrl: track.spotifyUrl,
-          youtubeData: null // You can add YouTube search here if needed
-        }
+        trackName: track.trackName,
+        artistName: track.artistName,
+        albumName: track.albumName,
+        albumCover: track.albumCover,
+        previewUrl: track.previewUrl,
+        spotifyUrl: track.spotifyUrl,
+        addedAt: track.addedAt, // Use addedAt instead of createdAt
+        youtubeData: null // You can add YouTube search here if needed
       })),
       albums: favorites.albums.map(album => ({
         albumId: album.albumId,
-        createdAt: album.addedAt,
-        album: {
-          albumId: album.albumId,
-          albumName: album.albumName,
-          artistName: album.artistName,
-          albumCover: album.albumCover,
-          spotifyUrl: album.spotifyUrl,
-          releaseDate: album.releaseDate
-        }
+        albumName: album.albumName,
+        artistName: album.artistName,
+        albumCover: album.albumCover,
+        spotifyUrl: album.spotifyUrl,
+        releaseDate: album.releaseDate,
+        addedAt: album.addedAt // Use addedAt instead of createdAt
       }))
     };
 

@@ -1,7 +1,7 @@
 import { PrismaClient, MoodType, FavoriteType, RecommendationType, EnergyLevel, ValenceLevel, ActivityType } from '@prisma/client';
 import { searchTracks, searchAlbums } from '../services/spotifyService';
 import { isTrackSearchResponse, isAlbumSearchResponse } from '../utils/spotifyUtils';
-// import { getAuth } from "@clerk/express";
+import { clerkClient } from '@clerk/express';
 
 const prisma = new PrismaClient();
 
@@ -174,24 +174,45 @@ interface RecommendationData {
 }
 
 export const ensureUserExistsInService = async (userId: string) => {
-  if (!userId) throw new Error('User ID is required');
+  if (!userId) {
+    console.error('❌ No userId provided to ensureUserExistsInService');
+    throw new Error('User ID is required');
+  }
 
   try {
+    console.log(`🔍 Checking if user ${userId} exists in database...`);
+    
     let user = await prisma.user.findUnique({
       where: { id: userId },
       include: { profile: true }
     });
 
     if (!user) {
-      console.log(`🔄 Creating user ${userId} in service...`);
+      console.log(`🔄 User ${userId} not found in database, creating...`);
       
+      // Get user details from Clerk first
+      let clerkUser;
+      try {
+        clerkUser = await clerkClient.users.getUser(userId);
+        console.log(`✅ Found user in Clerk: ${clerkUser.emailAddresses[0]?.emailAddress || 'No email'}`);
+      } catch (clerkError: any) {
+        console.warn(`⚠️ Could not fetch user from Clerk: ${clerkError.message}`);
+        // Continue with basic user creation
+      }
+      
+      // Create user with Clerk data
       user = await prisma.user.create({
         data: {
           id: userId,
-          email: `${userId}@temp.com`,
-          username: `user_${userId.substring(0, 8)}`,
+          email: clerkUser?.emailAddresses[0]?.emailAddress || `${userId}@temp.com`,
+          username: clerkUser?.username || `user_${userId.substring(0, 8)}`,
           profile: {
-            create: {}
+            create: {
+              avatar: clerkUser?.imageUrl || null,
+              bio: null,
+              mbti: null,
+              astrology: null
+            }
           }
         },
         include: {
@@ -199,18 +220,30 @@ export const ensureUserExistsInService = async (userId: string) => {
         }
       });
       
-      console.log(`✅ User created in service: ${userId}`);
+      console.log(`✅ User created in database: ${userId}`);
+    } else {
+      console.log(`✅ User ${userId} already exists in database`);
     }
 
     return user;
   } catch (error: any) {
+    console.error(`❌ Error in ensureUserExistsInService for ${userId}:`, error);
+    
+    // Handle unique constraint violations
     if (error.code === 'P2002') {
-      return await prisma.user.findUnique({
+      console.log(`🔄 Unique constraint violation, trying to find existing user...`);
+      const existingUser = await prisma.user.findUnique({
         where: { id: userId },
         include: { profile: true }
       });
+      
+      if (existingUser) {
+        console.log(`✅ Found existing user after constraint violation`);
+        return existingUser;
+      }
     }
-    throw error;
+    
+    throw new Error(`Failed to ensure user exists: ${error.message}`);
   }
 };
 
@@ -752,5 +785,176 @@ export const getUserMoodHistory = async (userId: string, limit: number = 30) => 
   } catch (error) {
     console.error('Error getting mood history:', error);
     throw new Error('Failed to get mood history');
+  }
+};
+
+export const createUserFromClerkWebhook = async (clerkUserId: string, clerkUserData: any) => {
+  try {
+    console.log(`🔄 Creating user from Clerk webhook: ${clerkUserId}`);
+    
+    const user = await prisma.user.create({
+      data: {
+        id: clerkUserId,
+        email: clerkUserData.email_addresses?.[0]?.email_address || `${clerkUserId}@temp.com`,
+        username: clerkUserData.username || `user_${clerkUserId.substring(0, 8)}`,
+        profile: {
+          create: {
+            avatar: clerkUserData.image_url || null,
+            bio: null,
+            mbti: null,
+            astrology: null
+          }
+        }
+      },
+      include: {
+        profile: true
+      }
+    });
+    
+    console.log(`✅ User created from webhook: ${clerkUserId}`);
+    return user;
+  } catch (error: any) {
+    console.error(`❌ Error creating user from webhook:`, error);
+    throw error;
+  }
+};
+
+// Function to update user from Clerk data
+export const updateUserFromClerk = async (userId: string) => {
+  try {
+    console.log(`🔄 Updating user ${userId} from Clerk data...`);
+    
+    const clerkUser = await clerkClient.users.getUser(userId);
+    
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        email: clerkUser.emailAddresses[0]?.emailAddress || undefined,
+        username: clerkUser.username || undefined,
+        profile: {
+          update: {
+            avatar: clerkUser.imageUrl || undefined
+          }
+        }
+      },
+      include: {
+        profile: true
+      }
+    });
+    
+    console.log(`✅ User updated from Clerk: ${userId}`);
+    return updatedUser;
+  } catch (error: any) {
+    console.error(`❌ Error updating user from Clerk:`, error);
+    throw error;
+  }
+};
+
+// Function to sync user data with Clerk
+export const syncUserWithClerk = async (userId: string) => {
+  try {
+    console.log(`🔄 Syncing user ${userId} with Clerk...`);
+    
+    // First check if user exists in database
+    let user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true }
+    });
+    
+    // Get user from Clerk
+    const clerkUser = await clerkClient.users.getUser(userId);
+    
+    if (!user) {
+      // Create user if doesn't exist
+      user = await prisma.user.create({
+        data: {
+          id: userId,
+          email: clerkUser.emailAddresses[0]?.emailAddress || `${userId}@temp.com`,
+          username: clerkUser.username || `user_${userId.substring(0, 8)}`,
+          profile: {
+            create: {
+              avatar: clerkUser.imageUrl || null,
+              bio: null,
+              mbti: null,
+              astrology: null
+            }
+          }
+        },
+        include: {
+          profile: true
+        }
+      });
+      console.log(`✅ User created and synced: ${userId}`);
+    } else {
+      // Update existing user
+      user = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          email: clerkUser.emailAddresses[0]?.emailAddress || user.email,
+          username: clerkUser.username || user.username,
+          profile: {
+            update: {
+              avatar: clerkUser.imageUrl || user.profile?.avatar
+            }
+          }
+        },
+        include: {
+          profile: true
+        }
+      });
+      console.log(`✅ User updated and synced: ${userId}`);
+    }
+    
+    return user;
+  } catch (error: any) {
+    console.error(`❌ Error syncing user with Clerk:`, error);
+    throw error;
+  }
+};
+
+// Enhanced middleware-friendly user creation
+export const createUserIfNotExists = async (userId: string) => {
+  try {
+    // Quick check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true }
+    });
+    
+    if (existingUser) {
+      return existingUser;
+    }
+    
+    // User doesn't exist, create them
+    return await ensureUserExistsInService(userId);
+    
+  } catch (error: any) {
+    console.error(`❌ Error in createUserIfNotExists:`, error);
+    throw error;
+  }
+};
+
+// Function to get user with profile
+export const getUserWithProfile = async (userId: string) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        profile: true,
+        favorites: {
+          take: 10,
+          orderBy: { addedAt: 'desc' }
+        },
+        recommendations: {
+          take: 5,
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+    
+    return user;
+  } catch (error: any) {
+    console.error(`❌ Error getting user with profile:`, error);
+    throw error;
   }
 };

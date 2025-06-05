@@ -660,7 +660,7 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
 
 export const addToFavorites = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).auth?.userId;
+    const userId = req.userId || req.user?.id;
     if (!userId) {
       res.status(401).json({ error: 'User not authenticated' });
       return;
@@ -712,7 +712,7 @@ export const addToFavorites = async (req: Request, res: Response): Promise<void>
 
 export const removeFromFavorites = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).auth?.userId;
+    const userId = req.userId || req.user?.id;
     if (!userId) {
       res.status(401).json({ error: 'User not authenticated' });
       return;
@@ -752,7 +752,7 @@ export const removeFromFavorites = async (req: Request, res: Response): Promise<
 
 export const getFavorites = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).auth?.userId;
+    const userId = req.userId || req.user?.id;
     if (!userId) {
       res.status(401).json({ error: 'User not authenticated' });
       return;
@@ -820,5 +820,55 @@ export const getRecommendationHistory = async (
     res
       .status(500)
       .json({ error: "Failed to retrieve recommendation history" });
+  }
+};
+
+export const checkFavorites = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId || req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    const { itemIds } = req.body;
+    
+    if (!itemIds || !Array.isArray(itemIds)) {
+      res.status(400).json({ 
+        error: 'Missing or invalid itemIds. Expected an array of item IDs.' 
+      });
+      return;
+    }
+
+    if (itemIds.length === 0) {
+      // Frontend expects 'favorited' not 'favoritedItems'
+      res.status(200).json({ favorited: [] });
+      return;
+    }
+
+    console.log(`Checking favorites for user: ${userId}, items: ${itemIds.join(', ')}`);
+
+    const favorites = await getUserFavorites(userId);
+    
+    const favoritedItemIds = new Set([
+      ...favorites.tracks.map(track => track.trackId),
+      ...favorites.albums.map(album => album.albumId)
+    ]);
+
+    const favoritedItems = itemIds.filter(itemId => favoritedItemIds.has(itemId));
+
+    // Match frontend expectations
+    res.status(200).json({
+      success: true,
+      favorited: favoritedItems,  // Changed from 'favoritedItems'
+      totalChecked: itemIds.length,
+      totalFavorited: favoritedItems.length
+    });
+  } catch (error: any) {
+    console.error('Error in checkFavorites controller:', error);
+    res.status(500).json({ 
+      error: 'Failed to check favorites',
+      message: error.message 
+    });
   }
 };

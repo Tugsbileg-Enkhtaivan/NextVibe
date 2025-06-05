@@ -253,16 +253,21 @@ export const saveUserRecommendationHistory = async (
   recommendation: RecommendationData
 ) => {
   try {
-    await ensureUserExistsInService(userId);
-
-    console.log('💾 Saving recommendation history for user:', userId);
-    console.log('📊 Recommendation data:', {
+    console.log('🏁 saveUserRecommendationHistory called');
+    console.log('👤 User ID received:', userId);
+    console.log('📊 Recommendation data received:', {
       type: recommendation.type,
       mood: recommendation.mood,
       activity: recommendation.activity,
       tracksCount: recommendation.tracks?.length || 0,
       albumsCount: recommendation.albums?.length || 0
     });
+
+    console.log('🔧 Calling ensureUserExistsInService...');
+    await ensureUserExistsInService(userId);
+    console.log('✅ ensureUserExistsInService completed');
+
+    console.log('💾 Starting Prisma create operation...');
 
     const savedRecommendation = await prisma.recommendation.create({
       data: {
@@ -293,7 +298,7 @@ export const saveUserRecommendationHistory = async (
               popularity: track.popularity || null
             };
             
-            console.log(`🎵 Creating track record:`, {
+            console.log(`🎵 Preparing track ${index + 1}:`, {
               trackId: trackData.trackId,
               name: trackData.name,
               artistNames: trackData.artistNames
@@ -317,7 +322,7 @@ export const saveUserRecommendationHistory = async (
               totalTracks: album.totalTracks || album.total_tracks || null
             };
             
-            console.log(`💽 Creating album record:`, {
+            console.log(`💽 Preparing album ${index + 1}:`, {
               albumId: albumData.albumId,
               name: albumData.name,
               artistNames: albumData.artistNames
@@ -333,7 +338,11 @@ export const saveUserRecommendationHistory = async (
       }
     });
 
-    console.log(`✅ Recommendation saved successfully for user ${userId}, ID: ${savedRecommendation.id}`);
+    console.log(`🎉 Prisma create operation completed!`);
+    console.log(`✅ Recommendation saved successfully for user ${userId}`);
+    console.log(`📋 Created recommendation ID: ${savedRecommendation.id}`);
+    console.log(`📊 Created with ${savedRecommendation.tracks.length} tracks and ${savedRecommendation.albums.length} albums`);
+    
     return savedRecommendation;
   } catch (error: any) {
     console.error('❌ Error saving recommendation history:', error);

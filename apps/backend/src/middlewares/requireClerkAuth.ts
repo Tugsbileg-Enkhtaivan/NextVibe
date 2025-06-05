@@ -29,6 +29,13 @@ export const requireClerkAuth = async (
       `Bearer ${req.headers.authorization.substring(7, 27)}...` : 'Missing');
     console.log('Cookies present:', Object.keys(req.cookies || {}).length > 0);
     
+    // Log all cookies for debugging
+    if (req.cookies) {
+      console.log('Available cookies:', Object.keys(req.cookies));
+      console.log('Session cookie exists:', !!req.cookies.__session);
+      console.log('Clerk session exists:', !!req.cookies.__clerk_db_jwt);
+    }
+    
     const { userId, sessionId, getToken } = getAuth(req);
     
     console.log('Clerk auth result:', { 
@@ -36,6 +43,34 @@ export const requireClerkAuth = async (
       sessionId: sessionId ? 'Present' : 'Missing',
       hasGetToken: typeof getToken === 'function'
     });
+
+    // Additional check for session validity
+    if (userId && sessionId) {
+      try {
+        // Verify the session is still valid with Clerk
+        const session = await clerkClient.sessions.getSession(sessionId);
+        if (session.status !== 'active') {
+          console.log('❌ Session is not active:', session.status);
+          res.status(401).json({ 
+            error: 'Unauthorized', 
+            message: 'Session expired. Please sign in again.',
+          });
+          return 
+        }
+        
+        req.userId = userId;
+        req.user = { id: userId };
+        console.log('✅ Authentication successful:', userId);
+        return next();
+      } catch (sessionError: any) {
+        console.log('❌ Session verification failed:', sessionError.message);
+        res.status(401).json({ 
+          error: 'Unauthorized', 
+          message: 'Invalid session. Please sign in again.',
+        });
+        return 
+      }
+    }
 
     if (userId) {
       req.userId = userId;
@@ -45,15 +80,23 @@ export const requireClerkAuth = async (
     }
 
     console.log('❌ Authentication failed - no userId from getAuth');
+    
+    const debugInfo = {
+      hasUserId: !!userId,
+      hasSessionId: !!sessionId,
+      hasAuthHeader: !!req.headers.authorization,
+      cookieCount: Object.keys(req.cookies || {}).length,
+      userAgent: req.headers['user-agent'],
+      origin: req.headers.origin,
+      referer: req.headers.referer
+    };
+    
+    console.log('Debug info:', debugInfo);
+    
     res.status(401).json({ 
       error: 'Unauthorized', 
       message: 'Authentication required. Please sign in.',
-      debug: process.env.NODE_ENV === 'development' ? {
-        hasUserId: !!userId,
-        hasSessionId: !!sessionId,
-        hasAuthHeader: !!req.headers.authorization,
-        cookieCount: Object.keys(req.cookies || {}).length
-      } : undefined
+      debug: process.env.NODE_ENV === 'development' ? debugInfo : undefined
     });
     return;
 
@@ -61,6 +104,7 @@ export const requireClerkAuth = async (
     console.error('❌ Auth middleware error:', {
       message: error.message,
       name: error.name,
+      stack: error.stack,
       url: req.url
     });
     
@@ -80,12 +124,27 @@ export const optionalClerkAuth = async (
   try {
     logDev('=== optionalClerkAuth middleware ===');
     
-    const { userId } = getAuth(req);
+    const { userId, sessionId } = getAuth(req);
     
     if (userId) {
-      req.userId = userId;
-      req.user = { id: userId };
-      logDev('ℹ️ Optional auth success:', userId);
+      // Optional: verify session for optional auth too
+      if (sessionId) {
+        try {
+          const session = await clerkClient.sessions.getSession(sessionId);
+          if (session.status === 'active') {
+            req.userId = userId;
+            req.user = { id: userId };
+            logDev('ℹ️ Optional auth success:', userId);
+          }
+        } catch (sessionError) {
+          logDev('⚠️ Optional session verification failed:', sessionError);
+          // Don't set user if session is invalid
+        }
+      } else {
+        req.userId = userId;
+        req.user = { id: userId };
+        logDev('ℹ️ Optional auth success (no session):', userId);
+      }
     } else {
       logDev('ℹ️ No authentication found (optional)');
     }
@@ -98,28 +157,20 @@ export const optionalClerkAuth = async (
   }
 };
 
-// export const requireRole = (allowedRoles: string[]) => {
-//   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-//     try {
-//       if (!req.userId) {
-//         res.status(401).json({ error: 'Unauthorized', message: 'Login required' });
-//         return;
-//       }
-
-//       // Use clerkClient to get user with roles
-//       const user = await clerkClient.users.getUser(req.userId);
-//       const userRoles = user.organizationMemberships?.map(org => org.role) || [];
-      
-//       const hasRole = allowedRoles.some(role => userRoles.includes(role));
-//       if (!hasRole) {
-//         res.status(403).json({ error: 'Forbidden', message: 'Access denied' });
-//         return;
-//       }
-
-//       next();
-//     } catch (error: any) {
-//       console.error('Role check error:', error.message);
-//       res.status(500).json({ error: 'Internal Server Error', message: 'Role check failed' });
-//     }
-//   };
-// };
+// Utility function to check if Clerk is properly configured
+export const checkClerkConfig = () => {
+  const requiredEnvVars = [
+    'CLERK_PUBLISHABLE_KEY',
+    'CLERK_SECRET_KEY'
+  ];
+  
+  const missing = requiredEnvVars.filter(envVar => !process.env[envVar]);
+  
+  if (missing.length > 0) {
+    console.error('❌ Missing required Clerk environment variables:', missing);
+    return false;
+  }
+  
+  console.log('✅ Clerk configuration appears complete');
+  return true;
+};

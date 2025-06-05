@@ -658,76 +658,146 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
   }
 };
 
-export const addToFavorites = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  const userId = req.user?.id;
-  const { itemId, itemType } = req.body;
+export const addToFavorites = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId || req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
 
-  if (!userId) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
-  }
-
-  const mappedItemType = itemType === 'song' ? 'track' : itemType;
-
-  if (!itemId || !mappedItemType || !["track", "album", "artist", "playlist"].includes(mappedItemType)) {
-    res
-      .status(400)
-      .json({
-        error: "Invalid request. Required: itemId and itemType (song, album, artist, or playlist)",
+    const { itemId, itemType, itemData } = req.body;
+    
+    if (!itemId || !itemType) {
+      res.status(400).json({ 
+        error: 'Missing required fields: itemId and itemType' 
       });
-    return;
-  }
+      return;
+    }
 
-  try {
-    await addToUserFavorites(userId, itemId, mappedItemType);
-    res.json({ success: true, message: "Added to favorites" });
-  } catch (error) {
-    console.error("[ADD TO FAVORITES ERROR]", error);
-    res.status(500).json({ error: "Failed to add item to favorites" });
+    // Validate item type
+    if (!['track', 'album', 'artist', 'playlist'].includes(itemType)) {
+      res.status(400).json({ 
+        error: 'Invalid itemType. Must be: track, album, artist, or playlist' 
+      });
+      return;
+    }
+
+    console.log(`Adding to favorites - User: ${userId}, Item: ${itemId}, Type: ${itemType}`);
+
+    const favorite = await addToUserFavorites(userId, itemId, itemType);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Added to favorites successfully',
+      favorite
+    });
+  } catch (error: any) {
+    console.error('Error in addToFavorites controller:', error);
+    
+    if (error.message.includes('already exists')) {
+      res.status(409).json({ 
+        error: 'Item already in favorites',
+        message: error.message 
+      });
+      return;
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to add to favorites',
+      message: error.message 
+    });
   }
 };
 
-export const removeFromFavorites = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  const userId = req.user?.id;
-  const { itemId } = req.params;
-
-  if (!userId) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
-  }
-
+export const removeFromFavorites = async (req: Request, res: Response): Promise<void> => {
   try {
-    await removeFromUserFavorites(userId, itemId);
-    res.json({ success: true });
-  } catch (error) {
-    console.error("[REMOVE FROM FAVORITES ERROR]", error);
-    res.status(500).json({ error: "Failed to remove item from favorites" });
+    const userId = req.userId || req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    const { itemId } = req.params;
+    
+    if (!itemId) {
+      res.status(400).json({ error: 'Missing itemId parameter' });
+      return;
+    }
+
+    console.log(`Removing from favorites - User: ${userId}, Item: ${itemId}`);
+
+    const result = await removeFromUserFavorites(userId, itemId);
+    
+    if (result.count === 0) {
+      res.status(404).json({ 
+        error: 'Item not found in favorites' 
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Removed from favorites successfully',
+      removedCount: result.count
+    });
+  } catch (error: any) {
+    console.error('Error in removeFromFavorites controller:', error);
+    res.status(500).json({ 
+      error: 'Failed to remove from favorites',
+      message: error.message 
+    });
   }
 };
 
-export const getFavorites = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  const userId = req.user?.id;
-
-  if (!userId) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
-  }
-
+export const getFavorites = async (req: Request, res: Response): Promise<void> => {
   try {
+    const userId = req.userId || req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    console.log(`Getting favorites for user: ${userId}`);
+
     const favorites = await getUserFavorites(userId);
-    res.json(favorites);
-  } catch (error) {
-    console.error("[GET FAVORITES ERROR]", error);
-    res.status(500).json({ error: "Failed to retrieve favorites" });
+    
+    const transformedFavorites = {
+      tracks: favorites.tracks.map(track => ({
+        trackId: track.trackId,
+        createdAt: track.addedAt,
+        song: {
+          songId: track.trackId,
+          songName: track.trackName,
+          artistName: track.artistName,
+          albumName: track.albumName,
+          albumCover: track.albumCover,
+          previewUrl: track.previewUrl,
+          spotifyUrl: track.spotifyUrl,
+          youtubeData: null // You can add YouTube search here if needed
+        }
+      })),
+      albums: favorites.albums.map(album => ({
+        albumId: album.albumId,
+        createdAt: album.addedAt,
+        album: {
+          albumId: album.albumId,
+          albumName: album.albumName,
+          artistName: album.artistName,
+          albumCover: album.albumCover,
+          spotifyUrl: album.spotifyUrl,
+          releaseDate: album.releaseDate
+        }
+      }))
+    };
+
+    res.status(200).json(transformedFavorites);
+  } catch (error: any) {
+    console.error('Error in getFavorites controller:', error);
+    res.status(500).json({ 
+      error: 'Failed to retrieve favorites',
+      message: error.message 
+    });
   }
 };
 
@@ -750,5 +820,55 @@ export const getRecommendationHistory = async (
     res
       .status(500)
       .json({ error: "Failed to retrieve recommendation history" });
+  }
+};
+
+export const checkFavorites = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId || req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    const { itemIds } = req.body;
+    
+    if (!itemIds || !Array.isArray(itemIds)) {
+      res.status(400).json({ 
+        error: 'Missing or invalid itemIds. Expected an array of item IDs.' 
+      });
+      return;
+    }
+
+    if (itemIds.length === 0) {
+      // Frontend expects 'favorited' not 'favoritedItems'
+      res.status(200).json({ favorited: [] });
+      return;
+    }
+
+    console.log(`Checking favorites for user: ${userId}, items: ${itemIds.join(', ')}`);
+
+    const favorites = await getUserFavorites(userId);
+    
+    const favoritedItemIds = new Set([
+      ...favorites.tracks.map(track => track.trackId),
+      ...favorites.albums.map(album => album.albumId)
+    ]);
+
+    const favoritedItems = itemIds.filter(itemId => favoritedItemIds.has(itemId));
+
+    // Match frontend expectations
+    res.status(200).json({
+      success: true,
+      favorited: favoritedItems,  // Changed from 'favoritedItems'
+      totalChecked: itemIds.length,
+      totalFavorited: favoritedItems.length
+    });
+  } catch (error: any) {
+    console.error('Error in checkFavorites controller:', error);
+    res.status(500).json({ 
+      error: 'Failed to check favorites',
+      message: error.message 
+    });
   }
 };

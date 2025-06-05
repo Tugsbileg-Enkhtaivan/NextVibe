@@ -4,7 +4,8 @@ import {
   addToFavorites,
   removeFromFavorites,
   getFavorites,
-  getRecommendationHistory
+  getRecommendationHistory,
+  checkFavorites
 } from '../controllers/aiSongController';
 import { requireClerkAuth, optionalClerkAuth } from '../middlewares/requireClerkAuth';
 import validateQuery from '../middlewares/validateQuery';
@@ -17,5 +18,6 @@ aiSongRouter.post('/favorites', requireClerkAuth, addToFavorites);
 aiSongRouter.delete('/favorites/:itemId', requireClerkAuth, removeFromFavorites);
 aiSongRouter.get('/favorites', requireClerkAuth, getFavorites);
 aiSongRouter.get('/history', requireClerkAuth, getRecommendationHistory);
+aiSongRouter.post('/favorites/check', requireClerkAuth, checkFavorites);
 
 export default aiSongRouter;

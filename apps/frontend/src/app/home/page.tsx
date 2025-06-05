@@ -10,10 +10,10 @@ import "swiper/css/pagination";
 import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
 import { Music2, Heart, Play } from "lucide-react";
-import api from "./utils/axios";
-import Header from "./components/Header";
-import FlipSwiperGenre from "./components/FlipSwiperGenre";
-import FlipSwiperActivity from "./components/FlipSwiperActivity";
+import api from "../utils/axios";
+import Header from "../components/Header";
+import FlipSwiperGenre from "../components/FlipSwiperGenre";
+import FlipSwiperActivity from "../components/FlipSwiperActivity";
 
 type EmotionData = {
     image: string;

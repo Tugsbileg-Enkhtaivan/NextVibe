@@ -34,7 +34,7 @@ export default function Header() {
         <header className={`max-w-4xl w-full flex items-center p-4 gap-2 h-13 bg-transparent text-white absolute top-0 left-0 z-20 justify-between sm:px-8 transition-transform duration-300 ${showHeader ? "translate-y-0" : "-translate-y-full"}`}>
             <div className="w-full h-full opacity-2 bg-black pointer-events-none absolute top-0 left-0"></div>
 
-            <Link href="/">
+            <Link href="/home">
                 {/* <img src="/assets/logo-4.webp" className="w-30" />› */}
                 <Home size={28} />
             </Link>

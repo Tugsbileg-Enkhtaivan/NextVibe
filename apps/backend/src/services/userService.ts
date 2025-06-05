@@ -255,6 +255,15 @@ export const saveUserRecommendationHistory = async (
   try {
     await ensureUserExistsInService(userId);
 
+    console.log('💾 Saving recommendation history for user:', userId);
+    console.log('📊 Recommendation data:', {
+      type: recommendation.type,
+      mood: recommendation.mood,
+      activity: recommendation.activity,
+      tracksCount: recommendation.tracks?.length || 0,
+      albumsCount: recommendation.albums?.length || 0
+    });
+
     const savedRecommendation = await prisma.recommendation.create({
       data: {
         userId,
@@ -268,36 +277,54 @@ export const saveUserRecommendationHistory = async (
         seedArtists: recommendation.seedArtists || [],
         parameters: recommendation.parameters,
         tracks: {
-          create: recommendation.tracks.map((track, index) => ({
-            trackId: track.id || track.trackId || track.songId,
-            position: index,
-            name: track.name || track.songName,
-            artistNames: Array.isArray(track.artists) 
-              ? track.artists.map((artist: any) => artist.name)
-              : Array.isArray(track.artistNames) 
+          create: recommendation.tracks?.map((track, index) => {
+            // Fix: Use the correct property names from your controller
+            const trackData = {
+              trackId: track.trackId || track.songId || track.id,
+              position: index,
+              name: track.name || track.songName,
+              artistNames: Array.isArray(track.artistNames) 
                 ? track.artistNames
-                : [track.artist || track.artistName || 'Unknown'],
-            albumName: track.album?.name || track.albumName || 'Unknown',
-            imageUrl: track.album?.images?.[0]?.url || track.imageUrl || track.albumCover || null,
-            previewUrl: track.preview_url || track.previewUrl || null,
-            duration: track.duration_ms || track.duration || null,
-            popularity: track.popularity || null
-          }))
+                : [track.artistName || track.artist || 'Unknown'],
+              albumName: track.albumName || track.album?.name || 'Unknown',
+              imageUrl: track.imageUrl || track.albumCover || track.album?.images?.[0]?.url || null,
+              previewUrl: track.previewUrl || track.preview_url || null,
+              duration: track.duration || track.duration_ms || null,
+              popularity: track.popularity || null
+            };
+            
+            console.log(`🎵 Creating track record:`, {
+              trackId: trackData.trackId,
+              name: trackData.name,
+              artistNames: trackData.artistNames
+            });
+            
+            return trackData;
+          }) || []
         },
         albums: {
-          create: recommendation.albums.map((album, index) => ({
-            albumId: album.id || album.albumId,
-            position: index,
-            name: album.name || album.albumName,
-            artistNames: Array.isArray(album.artists) 
-              ? album.artists.map((artist: any) => artist.name)
-              : Array.isArray(album.artistNames)
+          create: recommendation.albums?.map((album, index) => {
+            // Fix: Use the correct property names from your controller
+            const albumData = {
+              albumId: album.albumId || album.id,
+              position: index,
+              name: album.name || album.albumName,
+              artistNames: Array.isArray(album.artistNames)
                 ? album.artistNames
-                : [album.artist || album.artistName || 'Unknown'],
-            imageUrl: album.images?.[0]?.url || album.imageUrl || album.albumCover || null,
-            releaseDate: album.release_date || album.releaseDate || null,
-            totalTracks: album.total_tracks || album.totalTracks || null
-          }))
+                : [album.artistName || album.artist || 'Unknown'],
+              imageUrl: album.imageUrl || album.albumCover || album.images?.[0]?.url || null,
+              releaseDate: album.releaseDate || album.release_date || null,
+              totalTracks: album.totalTracks || album.total_tracks || null
+            };
+            
+            console.log(`💽 Creating album record:`, {
+              albumId: albumData.albumId,
+              name: albumData.name,
+              artistNames: albumData.artistNames
+            });
+            
+            return albumData;
+          }) || []
         }
       },
       include: {
@@ -306,10 +333,15 @@ export const saveUserRecommendationHistory = async (
       }
     });
 
-    console.log(`✅ Recommendation saved for user ${userId}`);
+    console.log(`✅ Recommendation saved successfully for user ${userId}, ID: ${savedRecommendation.id}`);
     return savedRecommendation;
   } catch (error: any) {
     console.error('❌ Error saving recommendation history:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta
+    });
     throw new Error(`Failed to save recommendation history: ${error.message}`);
   }
 };

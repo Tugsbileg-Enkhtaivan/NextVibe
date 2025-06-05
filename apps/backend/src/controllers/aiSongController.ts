@@ -611,41 +611,58 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
       albums: finalAlbums,
     });
 
-    if (userId !== "anonymous") {
-      try {
-        await saveUserRecommendationHistory(userId, {
-          type: RecommendationType.MOOD_BASED,
-          mood: convertToMoodType(mood),
-          activity: convertToActivityType(activity),
-          genres: [genre],
-          seedTracks: [],
-          seedArtists: [],
-          parameters: { mood, genre, activity },
-          tracks: finalSongs.map((song, index) => ({
-            trackId: song.songId,
-            position: index,
-            name: song.songName,
-            artistNames: [song.artistName],
-            albumName: song.albumName,
-            imageUrl: song.albumCover,
-            previewUrl: song.previewUrl,
-            duration: null,
-            popularity: null,
-          })),
-          albums: finalAlbums.map((album, index) => ({
-            albumId: album.albumId,
-            position: index,
-            name: album.albumName,
-            artistNames: [album.artistName],
-            imageUrl: album.albumCover,
-            releaseDate: album.releaseDate,
-            totalTracks: null,
-          })),
-        });
-      } catch (error) {
-        console.warn("Failed to save recommendation history:", error);
-      }
-    }
+    // Replace the history saving section in your getAISongSuggestions function
+if (userId !== "anonymous") {
+  try {
+    console.log('🔄 Attempting to save recommendation history...');
+    
+    const historyData = {
+      type: RecommendationType.MOOD_BASED,
+      mood: convertToMoodType(mood),
+      activity: convertToActivityType(activity),
+      genres: [genre],
+      seedTracks: [],
+      seedArtists: [],
+      parameters: { mood, genre, activity },
+      tracks: finalSongs.map((song, index) => ({
+        trackId: song.songId,
+        position: index,
+        name: song.songName,
+        artistNames: [song.artistName],
+        albumName: song.albumName,
+        imageUrl: song.albumCover,
+        previewUrl: song.previewUrl,
+        duration: null,
+        popularity: null,
+      })),
+      albums: finalAlbums.map((album, index) => ({
+        albumId: album.albumId,
+        position: index,
+        name: album.albumName,
+        artistNames: [album.artistName],
+        imageUrl: album.albumCover,
+        releaseDate: album.releaseDate,
+        totalTracks: null,
+      })),
+    };
+
+    console.log('📋 History data to save:', {
+      userId,
+      type: historyData.type,
+      mood: historyData.mood,
+      activity: historyData.activity,
+      tracksCount: historyData.tracks.length,
+      albumsCount: historyData.albums.length
+    });
+
+    await saveUserRecommendationHistory(userId, historyData);
+    console.log('✅ History saved successfully');
+  } catch (error) {
+    console.error("❌ Failed to save recommendation history:", error);
+    // Don't just warn - this might be important for debugging
+    // You might want to still return the response but log the error more prominently
+  }
+}
 
     res.json({
       songs: finalSongs,
@@ -762,7 +779,6 @@ export const getFavorites = async (req: Request, res: Response): Promise<void> =
 
     const favorites = await getUserFavorites(userId);
     
-    // Transform to flat structure that matches frontend expectations
     const transformedFavorites = {
       tracks: favorites.tracks.map(track => ({
         trackId: track.trackId,
@@ -800,7 +816,7 @@ export const getRecommendationHistory = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const userId = req.user?.id;
+  const userId = req.userId || req.user?.id;
 
   if (!userId) {
     res.status(401).json({ error: "Authentication required" });

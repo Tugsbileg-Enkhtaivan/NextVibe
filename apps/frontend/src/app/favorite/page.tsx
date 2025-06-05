@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { Heart, Music2, Play, Youtube, Trash2, Filter, Grid, List, AlertCircle, RefreshCw } from 'lucide-react';
-import api from '../utils/axios';
+import { useAuth } from '@clerk/nextjs';
+import { createAuthenticatedApi } from '../utils/axios';
 
 interface Song {
   trackId?: string;
@@ -52,7 +53,7 @@ const MusicCard = ({
   artist, 
   album, 
   cover, 
-  type = "song",
+  type = "track",
   previewUrl,
   spotifyUrl,
   youtubeData,
@@ -65,7 +66,7 @@ const MusicCard = ({
   artist: string;
   album?: string;
   cover?: string | null;
-  type?: "song" | "album";
+  type?: "track" | "album";
   previewUrl?: string | null;
   spotifyUrl?: string;
   youtubeData?: {
@@ -162,7 +163,7 @@ const MusicCard = ({
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-gray-900 truncate" title={title}>{title}</h3>
           <p className="text-purple-600 text-sm truncate" title={artist}>{artist}</p>
-          {album && type === "song" && (
+          {album && type === "track" && (
             <p className="text-gray-500 text-xs truncate" title={album}>{album}</p>
           )}
           {createdAt && (
@@ -197,7 +198,7 @@ const MusicCard = ({
                 Preview
               </button>
             )}
-            {type === "song" && youtubeUrl && (
+            {type === "track" && youtubeUrl && (
               <button 
                 onClick={handleYouTubePlay}
                 className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full hover:bg-red-200 transition-colors flex items-center gap-1"
@@ -231,6 +232,7 @@ const MusicCard = ({
 };
 
 export default function FavoritesPage() {
+  const { getToken, isLoaded, isSignedIn, userId } = useAuth();
   const [favoritesTracks, setFavoritesTracks] = useState<Song[]>([]);
   const [favoritesAlbums, setFavoritesAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
@@ -239,33 +241,91 @@ export default function FavoritesPage() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'alphabetical'>('newest');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
-  const loadFavorites = async () => {
+  const loadFavorites = async (retryCount = 0) => {
     try {
       setLoading(true);
       setError(null);
       
-      console.log('Loading favorites...');
-      const response = await api.get<FavoritesResponse>('api/ai-song/favorites');
-      console.log('Favorites response:', response.data);
+      // Check if user is signed in
+      if (!isSignedIn) {
+        setError('Please log in to view your favorites.');
+        return;
+      }
+
+      // Ensure we have userId
+      if (!userId) {
+        setError('User ID not available. Please try refreshing the page.');
+        return;
+      }
+
+      console.log('Loading favorites for user:', userId);
+      
+      // Get the session token with retry logic
+      let token;
+      try {
+        token = await getToken();
+      } catch (tokenError) {
+        console.error('Token retrieval failed:', tokenError);
+        if (retryCount < 2) {
+          console.log(`Retrying token retrieval (attempt ${retryCount + 1})`);
+          setTimeout(() => loadFavorites(retryCount + 1), 1000);
+          return;
+        }
+        throw new Error('Failed to get authentication token. Please try signing in again.');
+      }
+
+      if (!token) {
+        setError('Authentication failed. Please log in again.');
+        return;
+      }
+
+      console.log('Token obtained, making API request...');
+
+      // Create authenticated API instance
+      const authenticatedApi = createAuthenticatedApi(token);
+      
+      // Make the API request
+      const response = await authenticatedApi.get<FavoritesResponse>('/api/ai-song/favorites');
+      console.log('Favorites API response:', response.data);
+      
+      // Validate response structure
+      if (!response.data || typeof response.data !== 'object') {
+        throw new Error('Invalid response format from server');
+      }
       
       // Ensure we always have arrays, even if the response doesn't include them
       const tracks = Array.isArray(response.data.tracks) ? response.data.tracks : [];
       const albums = Array.isArray(response.data.albums) ? response.data.albums : [];
       
+      // Log track data for debugging
+      console.log('Track data sample:', tracks.length > 0 ? tracks[0] : 'No tracks');
+      console.log('Album data sample:', albums.length > 0 ? albums[0] : 'No albums');
+      
       setFavoritesTracks(tracks);
       setFavoritesAlbums(albums);
       
-      console.log(`Loaded ${tracks.length} favorite tracks and ${albums.length} favorite albums`);
+      console.log(`Successfully loaded ${tracks.length} favorite tracks and ${albums.length} favorite albums`);
     } catch (error: any) {
       console.error('Error loading favorites:', error);
       
       let errorMessage = 'Failed to load favorites. Please try again.';
+      
       if (error.response?.status === 401) {
-        errorMessage = 'Please log in to view your favorites.';
+        errorMessage = 'Authentication failed. Please log in again.';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Access denied. Please check your permissions.';
       } else if (error.response?.status === 404) {
-        errorMessage = 'No favorites found.';
+        // 404 might mean no favorites exist, which is normal
+        console.log('No favorites found (404) - this is normal for new users');
+        setFavoritesTracks([]);
+        setFavoritesAlbums([]);
+        return; // Don't set error for 404
       } else if (error.response?.status >= 500) {
         errorMessage = 'Server error. Please try again later.';
+      } else if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.name === 'TimeoutError' || error.code === 'ECONNABORTED') {
+        errorMessage = 'Request timed out. Please try again.';
       }
       
       setError(errorMessage);
@@ -275,20 +335,36 @@ export default function FavoritesPage() {
   };
 
   useEffect(() => {
-    loadFavorites();
-  }, []);
+    // Wait for Clerk to load and have user info
+    if (isLoaded && isSignedIn && userId) {
+      console.log('Clerk loaded, user signed in, loading favorites...');
+      loadFavorites();
+    } else if (isLoaded && !isSignedIn) {
+      console.log('Clerk loaded, user not signed in');
+      setLoading(false);
+    }
+  }, [isLoaded, isSignedIn, userId]);
 
   const handleFavoriteToggle = async (itemId: string, itemType: string, isFavorited: boolean): Promise<void> => {
     try {
       console.log(`Removing favorite - ID: ${itemId}, Type: ${itemType}`);
       
-      await api.delete(`/api/ai-song/favorites/${itemId}`);
+      // Get the session token
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication failed. Please log in again.');
+      }
+
+      // Create authenticated API instance
+      const authenticatedApi = createAuthenticatedApi(token);
+      
+      await authenticatedApi.delete(`/api/ai-song/favorites/${itemId}`);
       console.log(`Successfully removed ${itemId} from favorites`);
       
       // Remove from local state
       if (itemType === 'song') {
         setFavoritesTracks(prev => prev.filter(track => 
-          (track.trackId || track.trackId) !== itemId
+          track.trackId !== itemId
         ));
       } else if (itemType === 'album') {
         setFavoritesAlbums(prev => prev.filter(album => album.albumId !== itemId));
@@ -341,6 +417,49 @@ export default function FavoritesPage() {
   const { tracks: filteredTracks, albums: filteredAlbums } = getFilteredItems();
   const totalItems = filteredTracks.length + filteredAlbums.length;
 
+  // Show loading while Clerk is loading
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50">
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show sign in message if not authenticated
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50">
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <div className="text-center py-12">
+            <div className="bg-white rounded-2xl p-12 shadow-lg border border-gray-100">
+              <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                Sign in required
+              </h3>
+              <p className="text-gray-500 mb-6">
+                Please sign in to view your favorites
+              </p>
+              <button
+                onClick={() => window.location.href = '/sign-in'}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-full font-medium hover:shadow-lg transition-shadow"
+              >
+                Sign In
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50">
@@ -382,7 +501,7 @@ export default function FavoritesPage() {
               <p className="text-red-600 text-sm">{error}</p>
             </div>
             <button
-              onClick={loadFavorites}
+              onClick={() => loadFavorites()}
               className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors"
               title="Retry"
             >
@@ -490,22 +609,22 @@ export default function FavoritesPage() {
                     : 'grid-cols-1'
                 }`}>
                   {filteredTracks.map((track, i) => (
-                    <MusicCard
-                      key={track?.trackId || track?.trackId || i}
-                      title={track?.trackName || track?.songName || "Unknown Song"}
-                      artist={track?.artistName || (track?.artistNames && track.artistNames[0]) || "Unknown Artist"}
-                      album={track?.albumName}
-                      cover={track?.albumCover}
-                      type="song"
-                      previewUrl={track?.previewUrl}
-                      spotifyUrl={track?.spotifyUrl}
-                      youtubeData={track?.youtubeData}
-                      itemId={track?.trackId || track?.trackId}
-                      onFavoriteToggle={handleFavoriteToggle}
-                      isFavorited={true}
-                      createdAt={track?.addedAt}
-                    />
-                  ))}
+  <MusicCard
+    key={track?.trackId || i}
+    title={track?.trackName || "Unknown Song"}  // Backend sends trackName
+    artist={track?.artistName || "Unknown Artist"}  // Backend sends artistName (single string)
+    album={track?.albumName || "Unknown Album"}  // Backend sends albumName
+    cover={track?.albumCover}
+    type="track"
+    previewUrl={track?.previewUrl}
+    spotifyUrl={track?.spotifyUrl}
+    youtubeData={track?.youtubeData}
+    itemId={track?.trackId}
+    onFavoriteToggle={handleFavoriteToggle}
+    isFavorited={true}
+    createdAt={track?.addedAt}
+  />
+))}
                 </div>
               </div>
             )}
@@ -525,19 +644,19 @@ export default function FavoritesPage() {
                     : 'grid-cols-1'
                 }`}>
                   {filteredAlbums.map((album, i) => (
-                    <MusicCard
-                      key={album?.albumId || i}
-                      title={album?.albumName || "Unknown Album"}
-                      artist={album?.artistName || (album?.artistNames && album.artistNames[0]) || "Unknown Artist"}
-                      cover={album?.albumCover}
-                      type="album"
-                      spotifyUrl={album?.spotifyUrl}
-                      itemId={album?.albumId}
-                      onFavoriteToggle={handleFavoriteToggle}
-                      isFavorited={true}
-                      createdAt={album?.addedAt}
-                    />
-                  ))}
+  <MusicCard
+    key={album?.albumId || i}
+    title={album?.albumName || "Unknown Album"}  // Backend sends albumName
+    artist={album?.artistName || "Unknown Artist"}  // Backend sends artistName (single string)
+    cover={album?.albumCover}
+    type="album"
+    spotifyUrl={album?.spotifyUrl}
+    itemId={album?.albumId}
+    onFavoriteToggle={handleFavoriteToggle}
+    isFavorited={true}
+    createdAt={album?.addedAt}
+  />
+))}
                 </div>
               </div>
             )}

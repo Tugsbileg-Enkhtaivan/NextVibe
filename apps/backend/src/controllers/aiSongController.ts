@@ -18,7 +18,9 @@ import {
   getUserFavorites,
   removeFromUserFavorites,
 } from "../services/userService";
-import { MoodType, RecommendationType, ActivityType } from "@prisma/client";
+import { MoodType, RecommendationType, ActivityType, PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 interface SpotifyImage {
   url: string;
@@ -612,9 +614,26 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
     });
 
     // Replace the history saving section in your getAISongSuggestions function
+// Replace the history saving section in your getAISongSuggestions function with this:
 if (userId !== "anonymous") {
   try {
-    console.log('🔄 Attempting to save recommendation history...');
+    console.log('🔄 Starting recommendation history save process...');
+    console.log('👤 User ID for save:', userId);
+    console.log('🎯 User ID type:', typeof userId);
+    console.log('🎯 User ID length:', userId.length);
+    
+    // Check if user exists before saving
+    const userExists = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+    console.log('👤 User exists for save:', !!userExists);
+    
+    if (!userExists) {
+      console.log('❌ User does not exist - cannot save history');
+      // You might want to create the user here or handle this case
+    } else {
+      console.log('✅ User confirmed to exist, proceeding with save...');
+    }
     
     const historyData = {
       type: RecommendationType.MOOD_BASED,
@@ -646,21 +665,50 @@ if (userId !== "anonymous") {
       })),
     };
 
-    console.log('📋 History data to save:', {
+    console.log('📋 History data prepared:', {
       userId,
       type: historyData.type,
       mood: historyData.mood,
       activity: historyData.activity,
       tracksCount: historyData.tracks.length,
-      albumsCount: historyData.albums.length
+      albumsCount: historyData.albums.length,
+      genres: historyData.genres
     });
 
-    await saveUserRecommendationHistory(userId, historyData);
-    console.log('✅ History saved successfully');
-  } catch (error) {
-    console.error("❌ Failed to save recommendation history:", error);
-    // Don't just warn - this might be important for debugging
-    // You might want to still return the response but log the error more prominently
+    console.log('🎵 Sample track data:', historyData.tracks[0]);
+    console.log('💽 Sample album data:', historyData.albums[0]);
+
+    console.log('💾 Calling saveUserRecommendationHistory...');
+    const savedRecommendation = await saveUserRecommendationHistory(userId, historyData);
+    
+    console.log('✅ Save completed successfully!');
+    console.log('📋 Saved recommendation details:', {
+      id: savedRecommendation.id,
+      userId: savedRecommendation.userId,
+      type: savedRecommendation.type,
+      createdAt: savedRecommendation.createdAt,
+      tracksCreated: savedRecommendation.tracks.length,
+      albumsCreated: savedRecommendation.albums.length
+    });
+
+    // Verify the save by immediately checking the database
+    console.log('🔍 Verifying save by checking database...');
+    const verificationCount = await prisma.recommendation.count({ 
+      where: { userId } 
+    });
+    console.log('📊 Total recommendations after save:', verificationCount);
+    
+  } catch (error: any) {
+    console.error("❌ CRITICAL: Failed to save recommendation history");
+    console.error("❌ Error type:", error.constructor.name);
+    console.error("❌ Error message:", error.message);
+    console.error("❌ Error code:", error.code);
+    console.error("❌ Error meta:", error.meta);
+    console.error("❌ Full error:", error);
+    console.error("❌ Stack trace:", error.stack);
+    
+    // This is important - don't just warn, this needs to be fixed
+    throw error; // Re-throw to see if this breaks your API response
   }
 }
 
@@ -816,21 +864,58 @@ export const getRecommendationHistory = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const userId = req.userId || req.user?.id;
+  const userId = req.user?.id;
+
+  console.log('🎯 getRecommendationHistory called');
+  console.log('👤 User ID from request:', userId);
+  console.log('🔐 Full user object:', req.user);
 
   if (!userId) {
+    console.log('❌ No user ID found - authentication required');
     res.status(401).json({ error: "Authentication required" });
     return;
   }
 
   try {
+    console.log('⏳ Calling getUserRecommendationHistory...');
     const history = await getUserRecommendationHistory(userId);
-    res.json(history);
-  } catch (error) {
+    
+    console.log('📋 History result:', {
+      count: history.length,
+      type: typeof history,
+      isArray: Array.isArray(history)
+    });
+
+    // Log first few recommendations for debugging
+    if (history.length > 0) {
+      console.log('🎵 First recommendation details:', {
+        id: history[0].id,
+        type: history[0].type,
+        mood: history[0].mood,
+        activity: history[0].activity,
+        createdAt: history[0].createdAt,
+        tracksCount: history[0].tracks?.length || 0,
+        albumsCount: history[0].albums?.length || 0
+      });
+    }
+
+    res.json({
+      success: true,
+      count: history.length,
+      data: history
+    });
+  } catch (error: any) {
     console.error("[GET HISTORY ERROR]", error);
-    res
-      .status(500)
-      .json({ error: "Failed to retrieve recommendation history" });
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+      code: error.code
+    });
+    
+    res.status(500).json({ 
+      error: "Failed to retrieve recommendation history",
+      details: error.message 
+    });
   }
 };
 

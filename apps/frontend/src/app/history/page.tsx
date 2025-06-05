@@ -250,7 +250,7 @@ const HistoryCard = ({
             onClick={() => onDelete(recommendation.id)}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors text-white hover:text-red-500"
           >
-            <Trash2 className="w-4 h-4" />
+            {/* <Trash2 className="w-4 h-4" /> */}
           </button>
         </div>
 
@@ -655,8 +655,8 @@ export default function HistoryPage() {
                   onClick={clearAllHistory}
                   className="flex items-center gap-2 px-4 py-2 text-white font-semibold hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                 >
-                  <Trash2 className="w-4 h-4" />
-                  Clear All History
+                  {/* <Trash2 className="w-4 h-4" /> */}
+                  {/* Clear All History */}
                 </button>
               </div>
             )}

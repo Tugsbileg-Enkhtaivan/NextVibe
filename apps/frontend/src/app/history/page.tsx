@@ -400,6 +400,7 @@ export default function HistoryPage() {
       
       const response = await authenticatedApi.get<RecommendationHistory[]>("/api/ai-song/history");
       setHistory(response.data);
+      console.log("Fetched history:", response.data);
     } catch (error: any) {
       console.error('Failed to fetch history:', error);
 

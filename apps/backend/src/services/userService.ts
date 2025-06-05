@@ -316,7 +316,6 @@ export const saveUserRecommendationHistory = async (
 
 export const getUserRecommendationHistory = async (
   userId: string,
-  limit: number = 10
 ) => {
   try {
     await ensureUserExistsInService(userId);
@@ -324,7 +323,6 @@ export const getUserRecommendationHistory = async (
     const recommendations = await prisma.recommendation.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      take: limit,
       include: {
         tracks: {
           orderBy: { position: 'asc' }

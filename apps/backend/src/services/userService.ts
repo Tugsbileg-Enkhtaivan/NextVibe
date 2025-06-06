@@ -275,26 +275,8 @@ export const saveUserRecommendationHistory = async (
       return ['Unknown Artist'];
     };
 
-    const existingUser = await prisma.user.findUnique({ where: { id: userId } });
-
-    if (!existingUser) {
-      const isEmail = userId.includes('@');
-      const email = isEmail ? userId : `${userId}@placeholder.email`;
-      const username = isEmail
-        ? userId.split('@')[0]
-        : `user_${userId.slice(-8)}`;
-
-      await prisma.user.create({
-        data: {
-          id: userId,
-          username,
-          email
-        }
-      });
-      console.log('✅ User created successfully');
-    } else {
-      console.log('✅ User already exists');
-    }
+    // Ensure user exists using the same pattern as addToUserFavorites
+    await ensureUserExistsInService(userId);
 
     const tracksData = recommendation.tracks?.map((track, index) => {
       const trackId = track.trackId || track.songId || track.id;
@@ -328,9 +310,16 @@ export const saveUserRecommendationHistory = async (
       };
     }).filter((album): album is NonNullable<typeof album> => album !== null) || [];
 
+    console.log('💾 Creating recommendation with data:', {
+      userId: userId,
+      type: recommendation.type,
+      tracksCount: tracksData.length,
+      albumsCount: albumsData.length
+    });
+
     const savedRecommendation = await prisma.recommendation.create({
       data: {
-        userId: userId.trim(),
+        userId: userId,
         type: recommendation.type,
         mood: recommendation.mood,
         energy: recommendation.energy || null,
@@ -353,6 +342,11 @@ export const saveUserRecommendationHistory = async (
     return savedRecommendation;
   } catch (error: any) {
     console.error('❌ Error saving recommendation:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta
+    });
     throw new Error(`Failed to save recommendation: ${error.message}`);
   }
 };

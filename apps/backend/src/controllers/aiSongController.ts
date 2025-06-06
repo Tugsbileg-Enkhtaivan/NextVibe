@@ -628,90 +628,121 @@ Do NOT include song lists inside the ALBUM section. Keep output minimal and in c
     });
 
 if (userId !== "anonymous") {
-  console.log('💾 Attempting to save recommendation history...');
-  
-  try {
-    const historyData = {
-      type: RecommendationType.MOOD_BASED,
-      mood: convertToMoodType(mood),
-      activity: convertToActivityType(activity),
-      genres: [genre], // Array of strings
-      seedTracks: [], // Empty array for mood-based recommendations
-      seedArtists: [], // Empty array for mood-based recommendations
-      parameters: { mood, genre, activity }, // Object with search parameters
+      console.log('🔍 Validating user exists in database...');
       
-      // FIXED: Proper track data structure
-      tracks: finalSongs.map((song, index) => ({
-        trackId: song.songId,
-        position: index,
-        name: song.songName,
-        artistNames: [song.artistName], // Array of strings
-        albumName: song.albumName,
-        imageUrl: song.albumCover,
-        previewUrl: song.previewUrl,
-        duration: null, // You might want to get this from Spotify API
-        popularity: null, // You might want to get this from Spotify API
-      })),
-      
-      // FIXED: Proper album data structure
-      albums: finalAlbums.map((album, index) => ({
-        albumId: album.albumId,
-        position: index,
-        name: album.albumName,
-        artistNames: [album.artistName], // Array of strings
-        imageUrl: album.albumCover,
-        releaseDate: album.releaseDate,
-        totalTracks: null, // You might want to get this from Spotify API
-      })),
-    };
+      try {
+        // Check if user exists first
+        const userExists = await prisma.user.findUnique({
+          where: { id: userId }
+        });
 
-    console.log('📋 Prepared history data:', {
-      userId,
-      type: historyData.type,
-      mood: historyData.mood,
-      activity: historyData.activity,
-      tracksCount: historyData.tracks.length,
-      albumsCount: historyData.albums.length,
-      sampleTrack: historyData.tracks[0] || null,
-      sampleAlbum: historyData.albums[0] || null,
-    });
+        if (!userExists) {
+          console.warn(`⚠️ User ${userId} not found in database - skipping history save`);
+        } else {
+          console.log('✅ User validated, proceeding with history save...');
+          
+          // FIX 2: Ensure data types match Prisma schema exactly
+          const historyData = {
+            type: RecommendationType.MOOD_BASED,
+            mood: convertToMoodType(mood),
+            activity: convertToActivityType(activity),
+            genres: [genre], // Must be array of strings
+            seedTracks: [], // Empty array for mood-based
+            seedArtists: [], // Empty array for mood-based
+            parameters: { 
+              mood: mood.toString(), 
+              genre: genre.toString(), 
+              activity: activity.toString() 
+            },
+            
+            // FIX 3: Ensure all required fields are present and valid
+            tracks: finalSongs.map((song, index) => ({
+              trackId: song.songId,
+              position: index,
+              name: song.songName,
+              artistNames: [song.artistName], // Array required by schema
+              albumName: song.albumName || '', // Ensure not null
+              imageUrl: song.albumCover || null,
+              previewUrl: song.previewUrl || null,
+              duration: null, // Set to null if not available
+              popularity: null, // Set to null if not available
+            })),
+            
+            albums: finalAlbums.map((album, index) => ({
+              albumId: album.albumId,
+              position: index,
+              name: album.albumName,
+              artistNames: [album.artistName], // Array required by schema
+              imageUrl: album.albumCover || null,
+              releaseDate: album.releaseDate || null,
+              totalTracks: null, // Set to null if not available
+            })),
+          };
 
-    const savedRecommendation = await saveUserRecommendationHistory(userId, historyData);
-    
-    console.log('✅ Successfully saved recommendation history!');
-    console.log('📋 Saved recommendation ID:', savedRecommendation.id);
-
-    const verificationHistory = await getUserRecommendationHistory(userId, 1);
-    console.log('📊 Verification - Latest recommendation:', {
-      found: verificationHistory.length > 0,
-      latestId: verificationHistory[0]?.id || 'none',
-      tracksCount: verificationHistory[0]?.tracks?.length || 0,
-      albumsCount: verificationHistory[0]?.albums?.length || 0,
-    });
-    
-  } catch (saveError: any) {
-    console.error("❌ FAILED TO SAVE RECOMMENDATION HISTORY");
-    console.error("❌ Error type:", saveError.constructor.name);
-    console.error("❌ Error message:", saveError.message);
-    console.error("❌ Error code:", saveError.code);
-    console.error("❌ Error meta:", saveError.meta);
-    console.error("❌ Error stack:", saveError.stack);
-    
-    // FIXED: More detailed error analysis
-    if (saveError.code === 'P2002') {
-      console.error("❌ Unique constraint violation - possible duplicate data");
-    } else if (saveError.code === 'P2003') {
-      console.error("❌ Foreign key constraint violation - user might not exist");
-    } else if (saveError.code === 'P2025') {
-      console.error("❌ Record not found - related data missing");
+          const savedRecommendation = await prisma.$transaction(async (tx) => {
+            return await tx.recommendation.create({
+              data: {
+                userId: userId,
+                type: historyData.type,
+                mood: historyData.mood,
+                activity: historyData.activity,
+                genres: historyData.genres,
+                seedTracks: historyData.seedTracks,
+                seedArtists: historyData.seedArtists,
+                parameters: historyData.parameters,
+                tracks: {
+                  create: historyData.tracks
+                },
+                albums: {
+                  create: historyData.albums
+                }
+              },
+              include: {
+                tracks: true,
+                albums: true
+              }
+            });
+          });
+          
+          console.log('✅ Successfully saved recommendation history!');
+          console.log('📋 Saved recommendation ID:', savedRecommendation.id);
+        }
+        
+      } catch (saveError: any) {
+        console.error("❌ FAILED TO SAVE RECOMMENDATION HISTORY");
+        console.error("❌ Error details:", {
+          name: saveError.constructor.name,
+          message: saveError.message,
+          code: saveError.code,
+          meta: saveError.meta
+        });
+        
+        // FIX 6: Better error handling for specific Prisma errors
+        if (saveError.code === 'P2002') {
+          console.error("❌ Unique constraint violation - check for duplicate data");
+        } else if (saveError.code === 'P2003') {
+          console.error("❌ Foreign key constraint violation - user might not exist or invalid references");
+        } else if (saveError.code === 'P2025') {
+          console.error("❌ Record not found - related data missing");
+        } else if (saveError.code === 'P2011') {
+          console.error("❌ Null constraint violation - required field is null");
+        } else if (saveError.code === 'P2012') {
+          console.error("❌ Missing required field");
+        }
+        
+        // Don't let save errors break the API response
+        // But consider returning a warning to the frontend
+      }
+    } else {
+      console.log('🚫 Skipping history save - anonymous user');
     }
-    
-    // Don't let save errors break the API response
-    // But log them prominently for debugging
-  }
-} else {
-  console.log('🚫 Skipping history save - anonymous user');
-}
+
+    // Cache the results
+    userRecommendationCache.set(cacheKey, {
+      timestamp: Date.now(),
+      songs: finalSongs,
+      albums: finalAlbums,
+    });
 
     console.log('📤 Sending response to client...');
     res.json({
@@ -724,6 +755,33 @@ if (userId !== "anonymous") {
     console.error("[AI SONG SEARCH ERROR]", err.message || err);
     res.status(500).json({ error: "Failed to retrieve music recommendations" });
   }
+};
+
+const saveRecommendationHistoryWithRetry = async (userId: string, historyData: any, maxRetries: number = 3) => {
+  let lastError: any;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`💾 Attempt ${attempt}/${maxRetries} to save recommendation history...`);
+      
+      const result = await saveUserRecommendationHistory(userId, historyData);
+      console.log('✅ Successfully saved on attempt', attempt);
+      return result;
+      
+    } catch (error: any) {
+      lastError = error;
+      console.warn(`⚠️ Attempt ${attempt} failed:`, error.message);
+      
+      if (attempt < maxRetries) {
+        // Wait before retrying (exponential backoff)
+        const waitTime = Math.pow(2, attempt - 1) * 1000;
+        console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+  
+  throw lastError;
 };
 
 export const addToFavorites = async (req: Request, res: Response): Promise<void> => {

@@ -1,10 +1,20 @@
-"use client"
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Music2, Heart, Clock, User, Play, Search, Trash2, AlertCircle, ChevronDown } from 'lucide-react';
-import { useAuth } from '@clerk/nextjs';
+import React, { useState, useEffect } from "react";
+import {
+  Music2,
+  Heart,
+  Clock,
+  User,
+  Play,
+  Search,
+  Trash2,
+  AlertCircle,
+  ChevronDown,
+} from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
 import { createAuthenticatedApi } from "../utils/axios";
-import Header from '../components/Header';
+import Header from "../components/Header";
 
 type EmotionData = {
   image: string;
@@ -12,7 +22,7 @@ type EmotionData = {
 };
 
 enum MoodType {
-  HAPPY = 'HAPPY',
+  HAPPY = "HAPPY",
   JOY = "JOY",
   ANGER = "ANGER",
   ENVY = "ENVY",
@@ -21,7 +31,7 @@ enum MoodType {
   ENNUI = "ENNUI",
   DISGUST = "DISGUST",
   SHAME = "SHAME",
-  ANXIETY = "ANXIETY"
+  ANXIETY = "ANXIETY",
 }
 
 enum ActivityType {
@@ -36,7 +46,7 @@ enum ActivityType {
   YOGA = "YOGA",
   BIKING = "BIKING",
   DANCING = "DANCING",
-  GARDENING = "GARDENING"
+  GARDENING = "GARDENING",
 }
 
 interface HistoryTrack {
@@ -82,7 +92,7 @@ const MusicCard = ({
   previewUrl,
   onPlay,
   onFavorite,
-  isFavorite = false
+  isFavorite = false,
 }: {
   title: string;
   artist: string;
@@ -128,7 +138,11 @@ const MusicCard = ({
         onClick={onFavorite}
         className="p-2 hover:bg-gray-100 rounded-full transition-colors"
       >
-        <Heart className={`w-5 h-5 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-400'} hover:text-red-500`} />
+        <Heart
+          className={`w-5 h-5 ${
+            isFavorite ? "text-red-500 fill-current" : "text-gray-400"
+          } hover:text-red-500`}
+        />
       </button>
     </div>
   </div>
@@ -138,22 +152,24 @@ const MusicCard = ({
 
 const HistoryCard = ({
   recommendation,
-  onDelete
+  onDelete,
 }: {
   recommendation: RecommendationHistory;
   onDelete: (id: string) => void;
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(
+    null
+  );
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -161,18 +177,20 @@ const HistoryCard = ({
 
   const getMoodColor = (mood?: string) => {
     const colors: Record<string, string> = {
-      HAPPY: 'linear-gradient(135deg, #FFEB3B 0%, #FFC107 50%, #FF8F00 100%)',
-      JOY: 'linear-gradient(135deg, #FFEB3B 0%, #FFC107 50%, #FF8F00 100%)',
+      HAPPY: "linear-gradient(135deg, #FFEB3B 0%, #FFC107 50%, #FF8F00 100%)",
+      JOY: "linear-gradient(135deg, #FFEB3B 0%, #FFC107 50%, #FF8F00 100%)",
       ANGER: "linear-gradient(135deg, #F44336 0%, #D32F2F 50%, #B71C1C 100%)",
+      ANGRY: "linear-gradient(135deg, #F44336 0%, #D32F2F 50%, #B71C1C 100%)",
       ENVY: "linear-gradient(135deg, #00E5CC 0%, #00BFA5 50%, #004D40 100%)",
       FEAR: "linear-gradient(135deg, #9C27B0 0%, #7B1FA2 50%, #4A148C 100%)",
       SADNESS: "linear-gradient(135deg, #2196F3 0%, #1976D2 50%, #0D47A1 100%)",
+      SAD: "linear-gradient(135deg, #2196F3 0%, #1976D2 50%, #0D47A1 100%)",
       ENNUI: "linear-gradient(135deg, #5C6BC0 0%, #3F51B5 50%, #1A237E 100%)",
       DISGUST: "linear-gradient(135deg, #8BC34A 0%, #689F38 50%, #33691E 100%)",
       SHAME: "linear-gradient(135deg, #FF69B4 0%, #E91E63 50%, #880E4F 100%)",
       ANXIETY: "linear-gradient(135deg, #FF8C42 0%, #FF6B1A 50%, #E55100 100%)",
     };
-    return colors[mood || ''] || 'bg-gray-100 text-gray-800';
+    return colors[mood || ""] || "linear-gradient(135deg, #FFEB3B 0%, #FFC107 50%, #FF8F00 100%)";
   };
 
   const getGenreImage = (genre?: string) => {
@@ -188,7 +206,7 @@ const HistoryCard = ({
       REGGAE: "/assets/reggie-icon.webp",
       BLUES: "/assets/blues-icon.webp",
     };
-    return images[genre?.toUpperCase() || ''] || 'bg-gray-100 text-gray-800';
+    return images[genre?.toUpperCase() || ""] || "/assets/test.webp";
   };
 
   /// ACTIVITY COLOR
@@ -208,7 +226,7 @@ const HistoryCard = ({
       DANCING: "/assets/dancing-icon.webp",
       GARDENING: "/assets/gardening-icon.webp",
     };
-    return colors[activity || ''] || '/assets/hamster.webp';
+    return colors[activity || ""] || "/assets/hamster.webp";
   };
 
   /// HANDLE PLAY
@@ -226,13 +244,19 @@ const HistoryCard = ({
 
   /// HANDLE FAVORITE
 
-  const handleFavorite = (itemId: string, itemType: 'song' | 'album') => {
+  const handleFavorite = (itemId: string, itemType: "song" | "album") => {
     console.log(`Adding ${itemType} ${itemId} to favorites`);
   };
 
   return (
-    <div className={`rounded-xl shadow-sm border-6 border-gray-100 relative`} style={{ background: `${getMoodColor(recommendation.mood)}` }}>
-      <img src={getGenreImage(recommendation.genres[0])} className='w-14 absolute top-[-20px] right-[-15px] rotate-20' />
+    <div
+      className={`rounded-xl shadow-sm border-6 border-gray-100 relative`}
+      style={{ background: `${getMoodColor(recommendation.mood)}` }}
+    >
+      <img
+        src={getGenreImage(recommendation.genres[0])}
+        className="w-14 absolute top-[-20px] right-[-15px] rotate-20"
+      />
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -242,8 +266,12 @@ const HistoryCard = ({
               )}
             </div>
             <div>
-              <h3 className="font-semibold text-white">Music Recommendations</h3>
-              <p className="text-sm text-white">{formatDate(recommendation.createdAt)}</p>
+              <h3 className="font-semibold text-white">
+                Music Recommendations
+              </h3>
+              <p className="text-sm text-white">
+                {formatDate(recommendation.createdAt)}
+              </p>
             </div>
           </div>
           <button
@@ -257,16 +285,21 @@ const HistoryCard = ({
         <div className="flex flex-wrap gap-2 mb-4">
           {recommendation.mood && (
             <span className="px-3 py-1 rounded-full text-xs font-medium bg-white">
-              {recommendation.mood[0].toUpperCase() + recommendation.mood.slice(1).toLowerCase()}
+              {recommendation.mood[0].toUpperCase() +
+                recommendation.mood.slice(1).toLowerCase()}
             </span>
           )}
           {recommendation.activity && (
             <span className="px-3 py-1 rounded-full text-xs font-medium bg-white">
-              {recommendation.activity[0].toUpperCase() + recommendation.activity.slice(1).toLowerCase()}
+              {recommendation.activity[0].toUpperCase() +
+                recommendation.activity.slice(1).toLowerCase()}
             </span>
           )}
           {recommendation.genres.map((genre, index) => (
-            <span key={index} className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            <span
+              key={index}
+              className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+            >
               {genre}
             </span>
           ))}
@@ -289,7 +322,7 @@ const HistoryCard = ({
             onClick={() => setIsExpanded(!isExpanded)}
             className="text-white hover:text-black hover:bg-white rounded-2xl py-1 px-2 text-sm font-medium"
           >
-            {isExpanded ? 'Show Less' : 'Show More'}
+            {isExpanded ? "Show Less" : "Show More"}
           </button>
         </div>
       </div>
@@ -307,13 +340,15 @@ const HistoryCard = ({
                   <MusicCard
                     key={track.trackId}
                     title={track.name}
-                    artist={track.artistNames.join(', ')}
+                    artist={track.artistNames.join(", ")}
                     album={track.albumName}
                     cover={track.imageUrl}
                     type="track"
                     previewUrl={track.previewUrl}
-                    onPlay={() => track.previewUrl && handlePlay(track.previewUrl)}
-                    onFavorite={() => handleFavorite(track.trackId, 'song')}
+                    onPlay={() =>
+                      track.previewUrl && handlePlay(track.previewUrl)
+                    }
+                    onFavorite={() => handleFavorite(track.trackId, "song")}
                   />
                 ))}
               </div>
@@ -331,10 +366,10 @@ const HistoryCard = ({
                   <MusicCard
                     key={album.albumId}
                     title={album.name}
-                    artist={album.artistNames.join(', ')}
+                    artist={album.artistNames.join(", ")}
                     cover={album.imageUrl}
                     type="album"
-                    onFavorite={() => handleFavorite(album.albumId, 'album')}
+                    onFavorite={() => handleFavorite(album.albumId, "album")}
                   />
                 ))}
               </div>
@@ -352,7 +387,9 @@ const AuthError = ({ onRetry }: { onRetry: () => void }) => (
     <div className="bg-red-100 rounded-full p-6 w-24 h-24 mx-auto mb-4">
       <AlertCircle className="w-12 h-12 text-red-600 mx-auto" />
     </div>
-    <h3 className="text-xl font-semibold text-gray-900 mb-2">Authentication Required</h3>
+    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+      Authentication Required
+    </h3>
     <p className="text-gray-600 mb-6">
       Please sign in to view your recommendation history
     </p>
@@ -373,14 +410,14 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authError, setAuthError] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedMood, setSelectedMood] = useState<string>('all');
-  const [selectedActivity, setSelectedActivity] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedMood, setSelectedMood] = useState<string>("all");
+  const [selectedActivity, setSelectedActivity] = useState<string>("all");
 
   const fetchHistory = async () => {
     if (!isLoaded || !isSignedIn) {
       setAuthError(true);
-      setError('Please sign in to view your history');
+      setError("Please sign in to view your history");
       return;
     }
 
@@ -392,23 +429,27 @@ export default function HistoryPage() {
       // Get the session token from Clerk
       const token = await getToken();
       if (!token) {
-        throw new Error('No session token available');
+        throw new Error("No session token available");
       }
 
       // Create authenticated API instance with token
       const authenticatedApi = createAuthenticatedApi(token);
-      
-      const response = await authenticatedApi.get<RecommendationHistory[]>("/api/ai-song/history");
+
+      const response = await authenticatedApi.get<RecommendationHistory[]>(
+        "/api/ai-song/history"
+      );
       setHistory(response.data);
       console.log("Fetched history:", response.data);
     } catch (error: any) {
-      console.error('Failed to fetch history:', error);
+      console.error("Failed to fetch history:", error);
 
       if (error.response?.status === 401) {
         setAuthError(true);
-        setError('Authentication required. Please sign in to view your history.');
+        setError(
+          "Authentication required. Please sign in to view your history."
+        );
       } else {
-        setError('Failed to load recommendation history');
+        setError("Failed to load recommendation history");
       }
     } finally {
       setLoading(false);
@@ -430,19 +471,19 @@ export default function HistoryPage() {
     try {
       const token = await getToken();
       if (!token) {
-        throw new Error('No session token available');
+        throw new Error("No session token available");
       }
 
       const authenticatedApi = createAuthenticatedApi(token);
       await authenticatedApi.delete(`/api/ai-song/history/${id}`);
-      setHistory(prev => prev.filter(item => item.id !== id));
+      setHistory((prev) => prev.filter((item) => item.id !== id));
     } catch (error: any) {
-      console.error('Failed to delete history item:', error);
+      console.error("Failed to delete history item:", error);
       if (error.response?.status === 401) {
         setAuthError(true);
-        setError('Authentication required');
+        setError("Authentication required");
       } else {
-        setError('Failed to delete item');
+        setError("Failed to delete item");
       }
     }
   };
@@ -455,23 +496,23 @@ export default function HistoryPage() {
       return;
     }
 
-    if (window.confirm('Are you sure you want to clear all history?')) {
+    if (window.confirm("Are you sure you want to clear all history?")) {
       try {
         const token = await getToken();
         if (!token) {
-          throw new Error('No session token available');
+          throw new Error("No session token available");
         }
 
         const authenticatedApi = createAuthenticatedApi(token);
-        await authenticatedApi.delete('/api/ai-song/history');
+        await authenticatedApi.delete("/api/ai-song/history");
         setHistory([]);
       } catch (error: any) {
-        console.error('Failed to clear history:', error);
+        console.error("Failed to clear history:", error);
         if (error.response?.status === 401) {
           setAuthError(true);
-          setError('Authentication required');
+          setError("Authentication required");
         } else {
-          setError('Failed to clear history');
+          setError("Failed to clear history");
         }
       }
     }
@@ -479,19 +520,27 @@ export default function HistoryPage() {
 
   /// FILTERED HISTORY
 
-  const filteredHistory = history.filter(item => {
-    const matchesSearch = searchQuery === '' ||
-      item.tracks.some(track =>
-        track.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        track.artistNames.some(artist => artist.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredHistory = history.filter((item) => {
+    const matchesSearch =
+      searchQuery === "" ||
+      item.tracks.some(
+        (track) =>
+          track.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          track.artistNames.some((artist) =>
+            artist.toLowerCase().includes(searchQuery.toLowerCase())
+          )
       ) ||
-      item.albums.some(album =>
-        album.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        album.artistNames.some(artist => artist.toLowerCase().includes(searchQuery.toLowerCase()))
+      item.albums.some(
+        (album) =>
+          album.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          album.artistNames.some((artist) =>
+            artist.toLowerCase().includes(searchQuery.toLowerCase())
+          )
       );
 
-    const matchesMood = selectedMood === 'all' || item.mood === selectedMood;
-    const matchesActivity = selectedActivity === 'all' || item.activity === selectedActivity;
+    const matchesMood = selectedMood === "all" || item.mood === selectedMood;
+    const matchesActivity =
+      selectedActivity === "all" || item.activity === selectedActivity;
 
     return matchesSearch && matchesMood && matchesActivity;
   });
@@ -502,7 +551,10 @@ export default function HistoryPage() {
 
   // Helper function to format enum values for display
   const formatEnumValue = (value: string) => {
-    return value.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return value
+      .toLowerCase()
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   // Show loading state while Clerk is loading
@@ -517,9 +569,12 @@ export default function HistoryPage() {
   // Show auth error if not signed in
   if (!isSignedIn) {
     return (
-      <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen relative" style={{
-        background: "linear-gradient(135deg, #00F260 0%, #0575E6 100%)"
-      }}>
+      <div
+        className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen relative"
+        style={{
+          background: "linear-gradient(135deg, #00F260 0%, #0575E6 100%)",
+        }}
+      >
         <Header />
         <div className="mt-10">
           <AuthError onRetry={() => window.location.reload()} />
@@ -529,16 +584,21 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen relative" style={{
-      background: "linear-gradient(135deg, #00F260 0%, #0575E6 100%)"
-    }}>
+    <div
+      className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen relative"
+      style={{
+        background: "linear-gradient(135deg, #00F260 0%, #0575E6 100%)",
+      }}
+    >
       <Header />
 
       <div className="mb-8 mt-10">
         <div className="flex items-center justify-self-center gap-3 mb-6">
-          <img src="/assets/history-icon.webp" className='w-10' />
-          <div className='border-l border-white pl-4'>
-            <h1 className="text-3xl font-bold text-white">Recommendation History</h1>
+          <img src="/assets/history-icon.webp" className="w-10" />
+          <div className="border-l border-white pl-4">
+            <h1 className="text-3xl font-bold text-white">
+              Recommendation History
+            </h1>
             <p className="text-white">Your past music discoveries</p>
           </div>
         </div>
@@ -578,37 +638,43 @@ export default function HistoryPage() {
                   />
                 </div>
 
-                <div className='flex gap-[30px] sm:gap-4'>
-                  <div className='relative'>
+                <div className="flex gap-[30px] sm:gap-4">
+                  <div className="relative">
                     <select
                       value={selectedMood}
                       onChange={(e) => setSelectedMood(e.target.value)}
                       className="appearance-none px-4 py-2 bg-white border border-white rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-white pr-7"
                     >
                       <option value="all">All Moods</option>
-                      {moodOptions.map(mood => (
+                      {moodOptions.map((mood) => (
                         <option key={mood} value={mood}>
                           {formatEnumValue(mood)}
                         </option>
                       ))}
                     </select>
-                    <ChevronDown size={18} className='absolute top-1/2 left-[95px] -translate-y-1/2 pointer-events-none' />
+                    <ChevronDown
+                      size={18}
+                      className="absolute top-1/2 left-[95px] -translate-y-1/2 pointer-events-none"
+                    />
                   </div>
 
-                  <div className='relative'>
+                  <div className="relative">
                     <select
                       value={selectedActivity}
                       onChange={(e) => setSelectedActivity(e.target.value)}
                       className="appearance-none px-4 py-2 border bg-white border-white rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-white pr-7"
                     >
                       <option value="all">All Activities</option>
-                      {activityOptions.map(activity => (
+                      {activityOptions.map((activity) => (
                         <option key={activity} value={activity}>
                           {formatEnumValue(activity)}
                         </option>
                       ))}
                     </select>
-                    <ChevronDown size={18} className='absolute top-1/2 right-2 -translate-y-1/2 pointer-events-none' />
+                    <ChevronDown
+                      size={18}
+                      className="absolute top-1/2 right-2 -translate-y-1/2 pointer-events-none"
+                    />
                   </div>
                 </div>
               </div>
@@ -616,32 +682,47 @@ export default function HistoryPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <div className="bg-slate-600 rounded-xl p-4 shadow-sm border-6 border-white text-white flex items-center" >
+              <div className="bg-slate-600 rounded-xl p-4 shadow-sm border-6 border-white text-white flex items-center">
                 <div className="flex items-center gap-3">
-                  <img src="/assets/music.png" className='w-12 border-2 border-white rounded-full' />
+                  <img
+                    src="/assets/music.png"
+                    className="w-12 border-2 border-white rounded-full"
+                  />
                   <div>
                     <p className="text-2xl font-bold">{history.length}</p>
                     <p className="text-sm">Total Sessions</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-slate-600 rounded-xl p-4 shadow-sm border-6 border-white text-white flex items-center" >
+              <div className="bg-slate-600 rounded-xl p-4 shadow-sm border-6 border-white text-white flex items-center">
                 <div className="flex items-center gap-3">
-                  <img src="/assets/song.webp" className="w-12 border-2 border-white rounded-full" />
+                  <img
+                    src="/assets/song.webp"
+                    className="w-12 border-2 border-white rounded-full"
+                  />
                   <div>
                     <p className="text-2xl font-bold">
-                      {history.reduce((acc, item) => acc + item.tracks.length, 0)}
+                      {history.reduce(
+                        (acc, item) => acc + item.tracks.length,
+                        0
+                      )}
                     </p>
                     <p className="text-sm">Songs Discovered</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-slate-600 rounded-xl p-4 shadow-sm border-6 border-white text-white flex items-center" >
+              <div className="bg-slate-600 rounded-xl p-4 shadow-sm border-6 border-white text-white flex items-center">
                 <div className="flex items-center gap-3">
-                  <img src="/assets/music-album.png" className="w-12 border-2 border-white rounded-full" />
+                  <img
+                    src="/assets/music-album.png"
+                    className="w-12 border-2 border-white rounded-full"
+                  />
                   <div>
                     <p className="text-2xl font-bold">
-                      {history.reduce((acc, item) => acc + item.albums.length, 0)}
+                      {history.reduce(
+                        (acc, item) => acc + item.albums.length,
+                        0
+                      )}
                     </p>
                     <p className="text-sm ">Albums Explored</p>
                   </div>
@@ -676,28 +757,28 @@ export default function HistoryPage() {
             <Clock className="w-12 h-12 text-gray-400 mx-auto" />
           </div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            {searchQuery || selectedMood !== 'all' || selectedActivity !== 'all'
-              ? 'No matching recommendations found'
-              : 'No recommendations yet'
-            }
+            {searchQuery || selectedMood !== "all" || selectedActivity !== "all"
+              ? "No matching recommendations found"
+              : "No recommendations yet"}
           </h3>
           <p className="text-gray-600 mb-6">
-            {searchQuery || selectedMood !== 'all' || selectedActivity !== 'all'
-              ? 'Try adjusting your search or filters'
-              : 'Start discovering music to see your recommendation history here'
-            }
+            {searchQuery || selectedMood !== "all" || selectedActivity !== "all"
+              ? "Try adjusting your search or filters"
+              : "Start discovering music to see your recommendation history here"}
           </p>
         </div>
-      ) : !authError && (
-        <div className="space-y-6">
-          {filteredHistory.map((recommendation) => (
-            <HistoryCard
-              key={recommendation.id}
-              recommendation={recommendation}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
+      ) : (
+        !authError && (
+          <div className="space-y-6">
+            {filteredHistory.map((recommendation) => (
+              <HistoryCard
+                key={recommendation.id}
+                recommendation={recommendation}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+        )
       )}
     </div>
   );

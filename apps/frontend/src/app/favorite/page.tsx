@@ -1,9 +1,21 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Heart, Music2, Play, Youtube, Trash2, Filter, Grid, List, AlertCircle, RefreshCw } from 'lucide-react';
-import { useAuth } from '@clerk/nextjs';
-import { createAuthenticatedApi } from '../utils/axios';
+import {
+  Heart,
+  Music2,
+  Play,
+  Youtube,
+  Trash2,
+  Filter,
+  Grid,
+  List,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
+import { createAuthenticatedApi } from "../utils/axios";
+import Header from "../components/Header";
 
 interface Song {
   trackId?: string;
@@ -24,7 +36,7 @@ interface Song {
     videoId: string;
     title: string;
     thumbnail: string;
-    url: string;  
+    url: string;
   } | null;
 }
 
@@ -48,11 +60,11 @@ interface FavoritesResponse {
   playlists?: any[];
 }
 
-const MusicCard = ({ 
-  title, 
-  artist, 
-  album, 
-  cover, 
+const MusicCard = ({
+  title,
+  artist,
+  album,
+  cover,
   type = "track",
   previewUrl,
   spotifyUrl,
@@ -60,7 +72,7 @@ const MusicCard = ({
   itemId,
   onFavoriteToggle,
   isFavorited,
-  createdAt
+  createdAt,
 }: {
   title: string;
   artist: string;
@@ -75,34 +87,40 @@ const MusicCard = ({
     thumbnail: string;
   } | null;
   itemId?: string;
-  onFavoriteToggle?: (itemId: string, itemType: string, isFavorited: boolean) => Promise<void>;
+  onFavoriteToggle?: (
+    itemId: string,
+    itemType: string,
+    isFavorited: boolean
+  ) => Promise<void>;
   isFavorited?: boolean;
   createdAt?: string;
 }) => {
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const youtubeUrl = youtubeData?.videoId 
+
+  const youtubeUrl = youtubeData?.videoId
     ? `https://www.youtube.com/watch?v=${youtubeData.videoId}`
     : null;
 
   const handleYouTubePlay = () => {
     if (youtubeUrl) {
-      window.open(youtubeUrl, '_blank', 'noopener,noreferrer');
+      window.open(youtubeUrl, "_blank", "noopener,noreferrer");
     }
   };
 
   const handleFavoriteClick = async () => {
     if (!itemId || !onFavoriteToggle) return;
-    
+
     setFavoriteLoading(true);
     setError(null);
-    
+
     try {
       await onFavoriteToggle(itemId, type, isFavorited || false);
     } catch (error: any) {
-      console.error('Error toggling favorite:', error);
-      setError(error.message || 'Failed to remove from favorites. Please try again.');
+      console.error("Error toggling favorite:", error);
+      setError(
+        error.message || "Failed to remove from favorites. Please try again."
+      );
       setTimeout(() => setError(null), 3000);
     } finally {
       setFavoriteLoading(false);
@@ -110,15 +128,15 @@ const MusicCard = ({
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
+    if (!dateString) return "";
     try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
+      return new Date(dateString).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
       });
     } catch {
-      return '';
+      return "";
     }
   };
 
@@ -130,7 +148,7 @@ const MusicCard = ({
           {error}
         </div>
       )}
-      
+
       <div className="flex gap-4 items-center">
         <div className="relative">
           {cover ? (
@@ -140,16 +158,17 @@ const MusicCard = ({
               className="w-16 h-16 rounded-lg object-cover"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
+                target.style.display = "none";
                 if (target.nextElementSibling) {
-                  (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                  (target.nextElementSibling as HTMLElement).style.display =
+                    "flex";
                 }
               }}
             />
           ) : null}
-          <div 
+          <div
             className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center"
-            style={{ display: cover ? 'none' : 'flex' }}
+            style={{ display: cover ? "none" : "flex" }}
           >
             <Music2 className="w-8 h-8 text-white" />
           </div>
@@ -159,24 +178,30 @@ const MusicCard = ({
             </div>
           )}
         </div>
-        
+
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900 truncate" title={title}>{title}</h3>
-          <p className="text-purple-600 text-sm truncate" title={artist}>{artist}</p>
+          <h3 className="font-semibold text-gray-900 truncate" title={title}>
+            {title}
+          </h3>
+          <p className="text-purple-600 text-sm truncate" title={artist}>
+            {artist}
+          </p>
           {album && type === "track" && (
-            <p className="text-gray-500 text-xs truncate" title={album}>{album}</p>
+            <p className="text-gray-500 text-xs truncate" title={album}>
+              {album}
+            </p>
           )}
           {createdAt && (
             <p className="text-gray-400 text-xs mt-1">
               Added {formatDate(createdAt)}
             </p>
           )}
-          
+
           <div className="flex gap-2 mt-2 flex-wrap">
             {spotifyUrl && (
-              <a 
-                href={spotifyUrl} 
-                target="_blank" 
+              <a
+                href={spotifyUrl}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full hover:bg-green-200 transition-colors"
               >
@@ -184,13 +209,15 @@ const MusicCard = ({
               </a>
             )}
             {previewUrl && (
-              <button 
+              <button
                 onClick={() => {
                   try {
                     const audio = new Audio(previewUrl);
-                    audio.play().catch(e => console.warn('Preview play failed:', e));
+                    audio
+                      .play()
+                      .catch((e) => console.warn("Preview play failed:", e));
                   } catch (e) {
-                    console.warn('Audio creation failed:', e);
+                    console.warn("Audio creation failed:", e);
                   }
                 }}
                 className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full hover:bg-purple-200 transition-colors"
@@ -199,7 +226,7 @@ const MusicCard = ({
               </button>
             )}
             {type === "track" && youtubeUrl && (
-              <button 
+              <button
                 onClick={handleYouTubePlay}
                 className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full hover:bg-red-200 transition-colors flex items-center gap-1"
               >
@@ -209,14 +236,14 @@ const MusicCard = ({
             )}
           </div>
         </div>
-        
-        <button 
+
+        <button
           onClick={handleFavoriteClick}
           disabled={favoriteLoading}
           className={`p-2 rounded-full transition-all duration-200 ${
-            favoriteLoading 
-              ? 'opacity-50 cursor-not-allowed' 
-              : 'hover:bg-red-50'
+            favoriteLoading
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:bg-red-50"
           }`}
           title="Remove from favorites"
         >
@@ -237,97 +264,122 @@ export default function FavoritesPage() {
   const [favoritesAlbums, setFavoritesAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'songs' | 'albums'>('all');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'alphabetical'>('newest');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [filter, setFilter] = useState<"all" | "songs" | "albums">("all");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "alphabetical">(
+    "newest"
+  );
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
 
   const loadFavorites = async (retryCount = 0) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Check if user is signed in
       if (!isSignedIn) {
-        setError('Please log in to view your favorites.');
+        setError("Please log in to view your favorites.");
         return;
       }
 
       // Ensure we have userId
       if (!userId) {
-        setError('User ID not available. Please try refreshing the page.');
+        setError("User ID not available. Please try refreshing the page.");
         return;
       }
 
-      console.log('Loading favorites for user:', userId);
-      
+      console.log("Loading favorites for user:", userId);
+
       // Get the session token with retry logic
       let token;
       try {
         token = await getToken();
       } catch (tokenError) {
-        console.error('Token retrieval failed:', tokenError);
+        console.error("Token retrieval failed:", tokenError);
         if (retryCount < 2) {
           console.log(`Retrying token retrieval (attempt ${retryCount + 1})`);
           setTimeout(() => loadFavorites(retryCount + 1), 1000);
           return;
         }
-        throw new Error('Failed to get authentication token. Please try signing in again.');
+        throw new Error(
+          "Failed to get authentication token. Please try signing in again."
+        );
       }
 
       if (!token) {
-        setError('Authentication failed. Please log in again.');
+        setError("Authentication failed. Please log in again.");
         return;
       }
 
-      console.log('Token obtained, making API request...');
+      console.log("Token obtained, making API request...");
 
       // Create authenticated API instance
       const authenticatedApi = createAuthenticatedApi(token);
-      
+
       // Make the API request
-      const response = await authenticatedApi.get<FavoritesResponse>('/api/ai-song/favorites');
-      console.log('Favorites API response:', response.data);
-      
+      const response = await authenticatedApi.get<FavoritesResponse>(
+        "/api/ai-song/favorites"
+      );
+      console.log("Favorites API response:", response.data);
+
       // Validate response structure
-      if (!response.data || typeof response.data !== 'object') {
-        throw new Error('Invalid response format from server');
+      if (!response.data || typeof response.data !== "object") {
+        throw new Error("Invalid response format from server");
       }
-      
+
       // Ensure we always have arrays, even if the response doesn't include them
-      const tracks = Array.isArray(response.data.tracks) ? response.data.tracks : [];
-      const albums = Array.isArray(response.data.albums) ? response.data.albums : [];
-      
+      const tracks = Array.isArray(response.data.tracks)
+        ? response.data.tracks
+        : [];
+      const albums = Array.isArray(response.data.albums)
+        ? response.data.albums
+        : [];
+
       // Log track data for debugging
-      console.log('Track data sample:', tracks.length > 0 ? tracks[0] : 'No tracks');
-      console.log('Album data sample:', albums.length > 0 ? albums[0] : 'No albums');
-      
+      console.log(
+        "Track data sample:",
+        tracks.length > 0 ? tracks[0] : "No tracks"
+      );
+      console.log(
+        "Album data sample:",
+        albums.length > 0 ? albums[0] : "No albums"
+      );
+
       setFavoritesTracks(tracks);
       setFavoritesAlbums(albums);
-      
-      console.log(`Successfully loaded ${tracks.length} favorite tracks and ${albums.length} favorite albums`);
+
+      console.log(
+        `Successfully loaded ${tracks.length} favorite tracks and ${albums.length} favorite albums`
+      );
     } catch (error: any) {
-      console.error('Error loading favorites:', error);
-      
-      let errorMessage = 'Failed to load favorites. Please try again.';
-      
+      console.error("Error loading favorites:", error);
+
+      let errorMessage = "Failed to load favorites. Please try again.";
+
       if (error.response?.status === 401) {
-        errorMessage = 'Authentication failed. Please log in again.';
+        errorMessage = "Authentication failed. Please log in again.";
       } else if (error.response?.status === 403) {
-        errorMessage = 'Access denied. Please check your permissions.';
+        errorMessage = "Access denied. Please check your permissions.";
       } else if (error.response?.status === 404) {
         // 404 might mean no favorites exist, which is normal
-        console.log('No favorites found (404) - this is normal for new users');
+        console.log("No favorites found (404) - this is normal for new users");
         setFavoritesTracks([]);
         setFavoritesAlbums([]);
         return; // Don't set error for 404
       } else if (error.response?.status >= 500) {
-        errorMessage = 'Server error. Please try again later.';
-      } else if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
-        errorMessage = 'Network error. Please check your connection and try again.';
-      } else if (error.name === 'TimeoutError' || error.code === 'ECONNABORTED') {
-        errorMessage = 'Request timed out. Please try again.';
+        errorMessage = "Server error. Please try again later.";
+      } else if (
+        error.code === "NETWORK_ERROR" ||
+        error.message.includes("Network Error")
+      ) {
+        errorMessage =
+          "Network error. Please check your connection and try again.";
+      } else if (
+        error.name === "TimeoutError" ||
+        error.code === "ECONNABORTED"
+      ) {
+        errorMessage = "Request timed out. Please try again.";
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -337,62 +389,94 @@ export default function FavoritesPage() {
   useEffect(() => {
     // Wait for Clerk to load and have user info
     if (isLoaded && isSignedIn && userId) {
-      console.log('Clerk loaded, user signed in, loading favorites...');
+      console.log("Clerk loaded, user signed in, loading favorites...");
       loadFavorites();
     } else if (isLoaded && !isSignedIn) {
-      console.log('Clerk loaded, user not signed in');
+      console.log("Clerk loaded, user not signed in");
       setLoading(false);
     }
   }, [isLoaded, isSignedIn, userId]);
 
-  const handleFavoriteToggle = async (itemId: string, itemType: string, isFavorited: boolean): Promise<void> => {
+  const handleFavoriteToggle = async (
+    itemId: string,
+    itemType: string,
+    isFavorited: boolean
+  ): Promise<void> => {
     try {
       console.log(`Removing favorite - ID: ${itemId}, Type: ${itemType}`);
-      
+
       // Get the session token
       const token = await getToken();
       if (!token) {
-        throw new Error('Authentication failed. Please log in again.');
+        throw new Error("Authentication failed. Please log in again.");
       }
 
       // Create authenticated API instance
       const authenticatedApi = createAuthenticatedApi(token);
-      
+
       await authenticatedApi.delete(`/api/ai-song/favorites/${itemId}`);
       console.log(`Successfully removed ${itemId} from favorites`);
-      
+
       // Remove from local state
-      if (itemType === 'song') {
-        setFavoritesTracks(prev => prev.filter(track => 
-          track.trackId !== itemId
-        ));
-      } else if (itemType === 'album') {
-        setFavoritesAlbums(prev => prev.filter(album => album.albumId !== itemId));
+      if (itemType === "song") {
+        setFavoritesTracks((prev) =>
+          prev.filter((track) => track.trackId !== itemId)
+        );
+      } else if (itemType === "album") {
+        setFavoritesAlbums((prev) =>
+          prev.filter((album) => album.albumId !== itemId)
+        );
       }
     } catch (error: any) {
-      console.error('Error removing favorite:', error);
-      
-      let errorMessage = 'Failed to remove from favorites. Please try again.';
+      console.error("Error removing favorite:", error);
+
+      let errorMessage = "Failed to remove from favorites. Please try again.";
       if (error.response?.status === 401) {
-        errorMessage = 'Please log in to manage favorites.';
+        errorMessage = "Please log in to manage favorites.";
       } else if (error.response?.status === 404) {
-        errorMessage = 'Item not found in favorites.';
+        errorMessage = "Item not found in favorites.";
       }
-      
+
       throw new Error(errorMessage);
     }
   };
 
-  const sortItems = <T extends { addedAt?: string; trackName?: string; songName?: string; albumName?: string; artistName?: string }>(items: T[]) => {
+  const sortItems = <
+    T extends {
+      addedAt?: string;
+      trackName?: string;
+      songName?: string;
+      albumName?: string;
+      artistName?: string;
+    }
+  >(
+    items: T[]
+  ) => {
     return [...items].sort((a, b) => {
       switch (sortBy) {
-        case 'newest':
-          return new Date(b.addedAt || '').getTime() - new Date(a.addedAt || '').getTime();
-        case 'oldest':
-          return new Date(a.addedAt || '').getTime() - new Date(b.addedAt || '').getTime();
-        case 'alphabetical':
-          const aTitle = (a.trackName || a.songName || a.albumName || '').toLowerCase();
-          const bTitle = (b.trackName || b.songName || b.albumName || '').toLowerCase();
+        case "newest":
+          return (
+            new Date(b.addedAt || "").getTime() -
+            new Date(a.addedAt || "").getTime()
+          );
+        case "oldest":
+          return (
+            new Date(a.addedAt || "").getTime() -
+            new Date(b.addedAt || "").getTime()
+          );
+        case "alphabetical":
+          const aTitle = (
+            a.trackName ||
+            a.songName ||
+            a.albumName ||
+            ""
+          ).toLowerCase();
+          const bTitle = (
+            b.trackName ||
+            b.songName ||
+            b.albumName ||
+            ""
+          ).toLowerCase();
           return aTitle.localeCompare(bTitle);
         default:
           return 0;
@@ -405,9 +489,9 @@ export default function FavoritesPage() {
     const sortedAlbums = sortItems(favoritesAlbums);
 
     switch (filter) {
-      case 'songs':
+      case "songs":
         return { tracks: sortedTracks, albums: [] };
-      case 'albums':
+      case "albums":
         return { tracks: [], albums: sortedAlbums };
       default:
         return { tracks: sortedTracks, albums: sortedAlbums };
@@ -448,7 +532,7 @@ export default function FavoritesPage() {
                 Please sign in to view your favorites
               </p>
               <button
-                onClick={() => window.location.href = '/sign-in'}
+                onClick={() => (window.location.href = "/sign-in")}
                 className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-full font-medium hover:shadow-lg transition-shadow"
               >
                 Sign In
@@ -478,7 +562,8 @@ export default function FavoritesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
+        <Header />
+
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-3 rounded-full">
@@ -497,7 +582,9 @@ export default function FavoritesPage() {
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-600" />
             <div className="flex-1">
-              <p className="text-red-800 font-medium">Error loading favorites</p>
+              <p className="text-red-800 font-medium">
+                Error loading favorites
+              </p>
               <p className="text-red-600 text-sm">{error}</p>
             </div>
             <button
@@ -520,19 +607,31 @@ export default function FavoritesPage() {
                   <Filter className="w-4 h-4 text-gray-500" />
                   <select
                     value={filter}
-                    onChange={(e) => setFilter(e.target.value as 'all' | 'songs' | 'albums')}
+                    onChange={(e) =>
+                      setFilter(e.target.value as "all" | "songs" | "albums")
+                    }
                     className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                   >
-                    <option value="all">All ({favoritesTracks.length + favoritesAlbums.length})</option>
-                    <option value="songs">Songs ({favoritesTracks.length})</option>
-                    <option value="albums">Albums ({favoritesAlbums.length})</option>
+                    <option value="all">
+                      All ({favoritesTracks.length + favoritesAlbums.length})
+                    </option>
+                    <option value="songs">
+                      Songs ({favoritesTracks.length})
+                    </option>
+                    <option value="albums">
+                      Albums ({favoritesAlbums.length})
+                    </option>
                   </select>
                 </div>
 
                 {/* Sort */}
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'alphabetical')}
+                  onChange={(e) =>
+                    setSortBy(
+                      e.target.value as "newest" | "oldest" | "alphabetical"
+                    )
+                  }
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="newest">Newest First</option>
@@ -544,22 +643,22 @@ export default function FavoritesPage() {
               {/* View Mode */}
               <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
                 <button
-                  onClick={() => setViewMode('list')}
+                  onClick={() => setViewMode("list")}
                   className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'list' 
-                      ? 'bg-white text-purple-600 shadow-sm' 
-                      : 'text-gray-500 hover:text-gray-700'
+                    viewMode === "list"
+                      ? "bg-white text-purple-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
                   }`}
                   title="List view"
                 >
                   <List className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => setViewMode('grid')}
+                  onClick={() => setViewMode("grid")}
                   className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'grid' 
-                      ? 'bg-white text-purple-600 shadow-sm' 
-                      : 'text-gray-500 hover:text-gray-700'
+                    viewMode === "grid"
+                      ? "bg-white text-purple-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
                   }`}
                   title="Grid view"
                 >
@@ -603,28 +702,30 @@ export default function FavoritesPage() {
                     Favorite Songs ({filteredTracks.length})
                   </h2>
                 </div>
-                <div className={`grid gap-4 ${
-                  viewMode === 'grid' 
-                    ? 'md:grid-cols-2 lg:grid-cols-2' 
-                    : 'grid-cols-1'
-                }`}>
+                <div
+                  className={`grid gap-4 ${
+                    viewMode === "grid"
+                      ? "md:grid-cols-2 lg:grid-cols-2"
+                      : "grid-cols-1"
+                  }`}
+                >
                   {filteredTracks.map((track, i) => (
-  <MusicCard
-    key={track?.trackId || i}
-    title={track?.trackName || "Unknown Song"}  // Backend sends trackName
-    artist={track?.artistName || "Unknown Artist"}  // Backend sends artistName (single string)
-    album={track?.albumName || "Unknown Album"}  // Backend sends albumName
-    cover={track?.albumCover}
-    type="track"
-    previewUrl={track?.previewUrl}
-    spotifyUrl={track?.spotifyUrl}
-    youtubeData={track?.youtubeData}
-    itemId={track?.trackId}
-    onFavoriteToggle={handleFavoriteToggle}
-    isFavorited={true}
-    createdAt={track?.addedAt}
-  />
-))}
+                    <MusicCard
+                      key={track?.trackId || i}
+                      title={track?.trackName || "Unknown Song"} // Backend sends trackName
+                      artist={track?.artistName || "Unknown Artist"} // Backend sends artistName (single string)
+                      album={track?.albumName || "Unknown Album"} // Backend sends albumName
+                      cover={track?.albumCover}
+                      type="track"
+                      previewUrl={track?.previewUrl}
+                      spotifyUrl={track?.spotifyUrl}
+                      youtubeData={track?.youtubeData}
+                      itemId={track?.trackId}
+                      onFavoriteToggle={handleFavoriteToggle}
+                      isFavorited={true}
+                      createdAt={track?.addedAt}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -638,25 +739,27 @@ export default function FavoritesPage() {
                     Favorite Albums ({filteredAlbums.length})
                   </h2>
                 </div>
-                <div className={`grid gap-4 ${
-                  viewMode === 'grid' 
-                    ? 'md:grid-cols-2 lg:grid-cols-2' 
-                    : 'grid-cols-1'
-                }`}>
+                <div
+                  className={`grid gap-4 ${
+                    viewMode === "grid"
+                      ? "md:grid-cols-2 lg:grid-cols-2"
+                      : "grid-cols-1"
+                  }`}
+                >
                   {filteredAlbums.map((album, i) => (
-  <MusicCard
-    key={album?.albumId || i}
-    title={album?.albumName || "Unknown Album"}  // Backend sends albumName
-    artist={album?.artistName || "Unknown Artist"}  // Backend sends artistName (single string)
-    cover={album?.albumCover}
-    type="album"
-    spotifyUrl={album?.spotifyUrl}
-    itemId={album?.albumId}
-    onFavoriteToggle={handleFavoriteToggle}
-    isFavorited={true}
-    createdAt={album?.addedAt}
-  />
-))}
+                    <MusicCard
+                      key={album?.albumId || i}
+                      title={album?.albumName || "Unknown Album"} // Backend sends albumName
+                      artist={album?.artistName || "Unknown Artist"} // Backend sends artistName (single string)
+                      cover={album?.albumCover}
+                      type="album"
+                      spotifyUrl={album?.spotifyUrl}
+                      itemId={album?.albumId}
+                      onFavoriteToggle={handleFavoriteToggle}
+                      isFavorited={true}
+                      createdAt={album?.addedAt}
+                    />
+                  ))}
                 </div>
               </div>
             )}

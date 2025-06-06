@@ -867,7 +867,7 @@ export const getRecommendationHistory = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const userId = req.user?.id;
+  const userId = req.userId || req.user?.id;
 
   console.log('🎯 getRecommendationHistory called');
   console.log('👤 User ID from request:', userId);

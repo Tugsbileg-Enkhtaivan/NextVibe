@@ -1,11 +1,30 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { Heart, History, Menu } from 'lucide-react';
+import { useState, useRef, useEffect } from "react";
+import { Heart, History, Menu } from "lucide-react";
+
+import * as React from "react";
+import { DropdownMenuCheckboxItemProps } from "@radix-ui/react-dropdown-menu";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import Link from "next/link";
+
+type Checked = DropdownMenuCheckboxItemProps["checked"];
 
 function MenuBar() {
   const [isOpen, setIsOpen] = useState(false);
   const menubarRef = useRef<HTMLDivElement | null>(null);
+
+  // const [showStatusBar, setShowStatusBar] = React.useState<Checked>(false);
+  // const [showActivityBar, setShowActivityBar] = React.useState<Checked>(false);
+  // const [showPanel, setShowPanel] = React.useState<Checked>(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -17,33 +36,33 @@ function MenuBar() {
         setIsOpen(false);
       }
     };
-  
+
     if (isOpen) {
-        setTimeout(() => {
-          document.addEventListener('click', handleClickOutside);
-        }, 0);
-      }
-  
+      setTimeout(() => {
+        document.addEventListener("click", handleClickOutside);
+      }, 0);
+    }
+
     return () => {
-      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener("click", handleClickOutside);
     };
   }, [isOpen]);
-  
 
   return (
     <div className="relative">
-      <button onClick={() => setIsOpen((prev) => !prev)}>
-        <Menu
-          className={`${isOpen ? 'hidden' : 'block'} cursor-pointer`}
-          size={24}
-        />
-      </button>
+      {/* <button>
+        <Menu className="cursor-pointer" size={24} />
+      </button> */}
 
       {/* Fade/Slide Transition */}
-      <div
+      {/* <div
         ref={menubarRef}
         className={`absolute top-12 right-0 w-fit bg-white rounded-lg shadow-lg z-50 transition-all duration-500 transform
-        ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}
+        ${
+          isOpen
+            ? "opacity-100 scale-100 translate-y-0"
+            : "opacity-0 scale-95 -translate-y-2 pointer-events-none"
+        }
         `}
       >
         <a
@@ -61,7 +80,41 @@ function MenuBar() {
         >
           Favorite <Heart color="red" fill="red" size={18} />
         </a>
-      </div>
+      </div> */}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline">
+            <Menu color="black" size={24} />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-36">
+          {/* <DropdownMenuLabel>Appearance</DropdownMenuLabel> */}
+          {/* <DropdownMenuSeparator /> */}
+          <Link href="/history">
+            <DropdownMenuCheckboxItem
+            // checked={showStatusBar}
+            // onCheckedChange={setShowStatusBar}
+            >
+              History
+            </DropdownMenuCheckboxItem>
+          </Link>
+          <Link href="/favorite">
+            <DropdownMenuCheckboxItem
+            // checked={showActivityBar}
+            // onCheckedChange={setShowActivityBar}
+            >
+              Favorite
+            </DropdownMenuCheckboxItem>
+          </Link>
+          {/* <DropdownMenuCheckboxItem
+            checked={showPanel}
+            onCheckedChange={setShowPanel}
+          >
+            Panel
+          </DropdownMenuCheckboxItem> */}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
